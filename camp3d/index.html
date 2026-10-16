@@ -1,0 +1,1219 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#183A2C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>토의 캠프 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* 한 가지 세계관(낮의 캠프장)에 맞춘 단일 테마. 모든 색은 토큰. 레이아웃: 전체 화면 3D + 가장자리 HUD + 아래 대화창 */
+:root{
+  --sky:#CCE3DE; --ink:#1B241F; --panel:#183A2C; --panel-2:#21493A; --panel-line:#3E6B57; --cream:#F7F1E1; --cream-dim:#C9D8CC;
+  --lantern:#F2A13A; --lantern-deep:#C9761A; --leaf:#8CC66A; --sky-ui:#7DC0E0; --rose:#F08A7E; --gold:#FFD45E;
+  --good:#7FD69A; --bad:#FF9C8F; --paper:#FFFBF0; --paper-ink:#2A2418; --paper-line:#E4D9BF;
+  --f-display:'Jua','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  --f-body:'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(--ink);font-family:var(--f-body);font-size:17px;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
+input{font:inherit;font-size:17px}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#stage{position:fixed;top:0;left:0;right:0;bottom:0;touch-action:none;-webkit-user-select:none;user-select:none}
+#gl{position:absolute;top:0;left:0;width:100%;height:100%;display:block;touch-action:none}
+#tags{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+.tag{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;white-space:nowrap;will-change:transform}
+.tag .nm{background:rgba(24,58,44,.82);color:var(--cream);font-size:13px;padding:2px 8px;border-radius:8px;margin-top:2px}
+.tag .mk{font-family:var(--f-display);font-size:30px;line-height:1;color:var(--gold);text-shadow:0 2px 0 var(--lantern-deep),0 0 10px rgba(255,212,94,.8);animation:bob 1.2s ease-in-out infinite}
+.tag .mk.q{color:var(--sky-ui);text-shadow:0 2px 0 #2c6f8f,0 0 10px rgba(125,192,224,.8)}
+.tag .mk.ok{color:var(--good);font-size:22px;text-shadow:0 2px 0 #2b6b40;animation:none}
+.tag.zone .nm{background:var(--lantern);color:#2a1a05;font-family:var(--f-display);font-size:16px;padding:4px 12px}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+/* HUD */
+.hud{position:absolute;pointer-events:none}
+.hud > *{pointer-events:auto}
+#hudTL{top:calc(10px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));display:grid;grid-gap:8px;max-width:min(340px,58vw)}
+#hudTR{top:calc(10px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));display:grid;justify-items:end;grid-gap:8px}
+.pcard{display:grid;grid-template-columns:auto minmax(0,1fr);grid-gap:10px;align-items:center;background:var(--panel);color:var(--cream);border:2px solid var(--panel-line);border-radius:16px;padding:8px 12px 10px 8px;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.ava{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-size:20px;color:var(--paper-ink);border:3px solid var(--cream)}
+.pname{font-family:var(--f-display);font-size:18px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptitle{font-size:12.5px;color:var(--cream-dim)}
+.xp{height:10px;border-radius:6px;background:rgba(0,0,0,.35);margin-top:5px;overflow:hidden}
+.xp i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--leaf),var(--gold));border-radius:6px;transition:width .5s}
+.lv{display:inline-block;background:var(--gold);color:#3a2a00;font-family:var(--f-display);border-radius:6px;padding:0 6px;margin-right:6px;font-size:14px}
+.track{background:rgba(255,251,240,.92);color:var(--paper-ink);border-radius:12px;padding:8px 12px;font-size:14.5px;border:2px solid var(--paper-line);line-height:1.4}
+.track b{font-family:var(--f-display);font-weight:400;color:var(--lantern-deep);font-size:13px;display:block}
+.iconrow{display:flex}
+.ibtn{width:52px;height:52px;margin-left:8px;border-radius:14px;border:2px solid var(--panel-line);background:var(--panel);color:var(--cream);display:grid;place-items:center;box-shadow:0 4px 0 rgba(0,0,0,.18);position:relative}
+.ibtn svg{width:26px;height:26px}
+.ibtn .lbl{position:absolute;bottom:-18px;font-size:11px;color:var(--ink);background:rgba(255,251,240,.85);border-radius:6px;padding:0 4px;white-space:nowrap}
+.ibtn .dot{position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:var(--rose);border:2px solid var(--panel)}
+#mini{width:132px;height:132px;border-radius:50%;border:3px solid var(--panel);background:var(--panel-2);box-shadow:0 4px 0 rgba(0,0,0,.18);margin-top:14px}
+
+/* joystick + action */
+#joy{position:absolute;left:max(20px,env(safe-area-inset-left,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:140px;height:140px;border-radius:50%;background:rgba(24,58,44,.28);border:3px solid rgba(255,251,240,.6);touch-action:none}
+#knob{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:rgba(255,251,240,.9);border:3px solid var(--panel);box-shadow:0 3px 0 rgba(0,0,0,.2)}
+#act{position:absolute;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));min-width:120px;height:120px;border-radius:60px;padding:0 22px;background:var(--lantern);color:#2a1a05;border:4px solid var(--paper);font-family:var(--f-display);font-size:22px;box-shadow:0 6px 0 var(--lantern-deep);display:grid;place-items:center;line-height:1.15;text-align:center}
+#act small{display:block;font-family:var(--f-body);font-size:13px}
+#act[disabled]{background:rgba(24,58,44,.35);color:rgba(255,251,240,.8);box-shadow:none;border-color:rgba(255,251,240,.4)}
+#camBtns{position:absolute;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(166px + env(safe-area-inset-bottom,0px));display:flex}
+#camBtns button{width:48px;height:48px;margin-left:8px;border-radius:12px;border:2px solid var(--panel-line);background:rgba(24,58,44,.75);color:var(--cream);font-size:20px}
+
+/* toast / banner */
+#float{position:absolute;left:50%;top:22%;transform:translateX(-50%);pointer-events:none;display:grid;justify-items:center;grid-gap:6px}
+.fx{font-family:var(--f-display);font-size:26px;color:var(--gold);text-shadow:0 2px 0 #6a4a00,0 0 12px rgba(0,0,0,.25);animation:rise 1.6s ease-out forwards}
+@keyframes rise{0%{opacity:0;transform:translateY(16px)}15%{opacity:1}80%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+#banner{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);background:var(--panel);color:var(--cream);border:4px solid var(--gold);border-radius:20px;padding:18px 28px;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.2);pointer-events:none;max-width:calc(100% - 32px)}
+#banner h2{font-family:var(--f-display);font-weight:400;font-size:32px;margin:0;color:var(--gold)}
+#banner p{margin:4px 0 0}
+
+/* dialogue */
+#dlg{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(860px,calc(100% - 24px));background:var(--paper);color:var(--paper-ink);border:4px solid var(--panel);border-radius:20px;box-shadow:0 8px 0 rgba(24,58,44,.35);padding:16px 18px 14px;display:grid;grid-template-columns:auto minmax(0,1fr);grid-gap:14px;max-height:72vh;overflow:auto}
+#dlg .por{width:72px;height:72px;border-radius:18px;display:grid;place-items:center;font-family:var(--f-display);font-size:30px;color:var(--paper-ink);border:3px solid var(--panel)}
+#dlg .who{font-family:var(--f-display);font-size:20px;color:var(--panel)}
+#dlg .who small{font-family:var(--f-body);font-size:13px;color:#6a6250;margin-left:6px}
+#dlg .txt{font-size:19px;line-height:1.6;margin-top:4px;min-height:2.4em;white-space:pre-line}
+#dlg .act-line{font-size:15px;color:#7a6c4f;font-style:italic}
+.choices{display:grid;grid-gap:8px;margin-top:12px}
+.choice{text-align:left;background:#fff;border:2.5px solid var(--paper-line);border-radius:14px;padding:12px 14px;min-height:56px;font-size:17px;line-height:1.45;display:grid;grid-template-columns:auto minmax(0,1fr);grid-gap:10px;align-items:center}
+.choice:hover,.choice:focus-visible{border-color:var(--lantern)}
+.choice .k{width:30px;height:30px;border-radius:8px;background:var(--panel);color:var(--cream);display:grid;place-items:center;font-family:var(--f-display);font-size:15px}
+.choice.good{border-color:#3d9c5c;background:#E9F7EE}
+.choice.badc{border-color:#c4554a;background:#FCE9E6}
+.next{margin-top:10px;display:flex;justify-content:flex-end}
+.btn{min-height:52px;padding:0 22px;border-radius:14px;border:0;font-weight:700;font-size:17px;display:inline-flex;align-items:center;justify-content:center}
+.btn-go{background:var(--panel);color:var(--cream);box-shadow:0 4px 0 #0e241b}
+.btn-hot{background:var(--lantern);color:#2a1a05;box-shadow:0 4px 0 var(--lantern-deep);font-family:var(--f-display);font-weight:400;font-size:20px}
+.btn-soft{background:#fff;color:var(--paper-ink);border:2px solid var(--paper-line)}
+.fb{border-radius:14px;padding:12px 14px;margin-top:10px;font-size:16.5px;line-height:1.55}
+.fb.ok{background:#E9F7EE;border:2px solid #3d9c5c}
+.fb.no{background:#FCE9E6;border:2px solid #c4554a}
+.fb b{font-family:var(--f-display);font-weight:400;font-size:19px}
+.chip{display:inline-block;background:var(--panel);color:var(--cream);border-radius:999px;padding:2px 10px;font-size:13px;margin:4px 4px 0 0}
+.gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-gap:10px;margin-top:10px}
+.gauge{font-size:13px;font-weight:700}
+.gauge .bar{height:14px;border-radius:7px;background:#EAE2CC;overflow:hidden;margin-top:3px;border:1.5px solid var(--paper-line)}
+.gauge .bar i{display:block;height:100%;border-radius:7px;transition:width .5s}
+.gauge.h i{background:linear-gradient(90deg,#F08A7E,#FF6F91)}
+.gauge.s i{background:linear-gradient(90deg,#7DC0E0,#4B8FD6)}
+
+/* modal sheets */
+#sheet{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(14,30,22,.55);display:grid;place-items:center;padding:calc(12px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:min(920px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch;background:var(--paper);color:var(--paper-ink);border:4px solid var(--panel);border-radius:22px;box-shadow:0 10px 0 rgba(0,0,0,.25);padding:20px}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sheet h2{font-family:var(--f-display);font-weight:400;font-size:28px;margin:0;color:var(--panel)}
+.sheet h3{font-family:var(--f-display);font-weight:400;font-size:21px;margin:16px 0 8px;color:var(--panel)}
+.x{width:48px;height:48px;border-radius:12px;border:2px solid var(--paper-line);background:#fff;font-size:22px}
+.quest{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-gap:12px;align-items:center;background:#fff;border:2px solid var(--paper-line);border-radius:16px;padding:12px;margin-bottom:10px}
+.quest .qi{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;font-family:var(--f-display);font-size:22px;color:var(--cream);background:var(--panel)}
+.quest.done .qi{background:#3d9c5c}
+.quest p{margin:2px 0 0;font-size:14.5px;color:#5f584a}
+.prog{height:8px;border-radius:5px;background:#EAE2CC;margin-top:6px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--leaf)}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-gap:10px}
+.badge{background:#fff;border:2px solid var(--paper-line);border-radius:16px;padding:12px;text-align:center}
+.badge svg{width:84px;height:84px}
+.badge b{display:block;font-family:var(--f-display);font-weight:400;font-size:16px;margin-top:4px}
+.skill{background:#fff;border:2px solid var(--paper-line);border-radius:14px;padding:10px 12px}
+.skill.on{border-color:var(--lantern);background:#FFF4DF}
+.skill b{font-family:var(--f-display);font-weight:400;font-size:17px}
+.skill p{margin:4px 0 0;font-size:14px;color:#5f584a}
+.rules{margin:0;padding-left:22px;display:grid;grid-gap:6px}
+.rules li b{font-family:var(--f-display);font-weight:400}
+
+/* appraisal */
+.opcard{background:#fff;border:3px solid var(--panel);border-radius:18px;padding:14px 16px;position:relative}
+.opcard .gem{position:absolute;right:14px;top:-18px;width:40px;height:40px}
+.opcard .op{font-size:20px;font-weight:700;margin:4px 0}
+.opcard .why{color:#5f584a}
+.crit{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-gap:10px;align-items:center;padding:10px 0;border-top:1.5px dashed var(--paper-line)}
+.crit:first-child{border-top:0}
+.crit .q b{display:block}
+.crit .q small{color:#7a6c4f}
+.marks{display:flex}
+.mark{width:54px;height:54px;margin-left:6px;border-radius:50%;border:2.5px solid var(--paper-line);background:#fff;display:grid;place-items:center;color:#9a8f78}
+.mark svg{width:26px;height:26px}
+.mark[aria-pressed="true"].m2{background:#E9F7EE;border-color:#3d9c5c;color:#2b7a46}
+.mark[aria-pressed="true"].m1{background:#FFF1D6;border-color:#C9761A;color:#a35f10}
+.mark[aria-pressed="true"].m0{background:#FCE9E6;border-color:#c4554a;color:#b03b30}
+.res{font-size:14.5px;margin-top:6px;padding:8px 10px;border-radius:10px}
+.res.ok{background:#E9F7EE}.res.no{background:#FFF1D6}
+.gems{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));grid-gap:10px}
+.gemopt{text-align:left;background:#fff;border:2.5px solid var(--paper-line);border-radius:14px;padding:12px;min-height:56px}
+.gemopt:hover,.gemopt:focus-visible{border-color:var(--lantern)}
+
+/* title / cert */
+#title{position:absolute;top:0;left:0;right:0;bottom:0;display:grid;place-items:center;background:linear-gradient(180deg,rgba(204,227,222,.2),rgba(24,58,44,.55));padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));overflow:auto}
+.tcard{width:min(620px,100%);background:var(--paper);border:4px solid var(--panel);border-radius:24px;padding:24px;box-shadow:0 12px 0 rgba(0,0,0,.2)}
+.tcard .kick{font-size:14px;color:#7a6c4f}
+.tcard h1{font-family:var(--f-display);font-weight:400;font-size:46px;line-height:1.1;margin:6px 0 4px;color:var(--panel)}
+.tcard h1 span{color:var(--lantern-deep)}
+.tcard .goal{background:#FFF4DF;border-radius:12px;padding:10px 14px;margin:12px 0}
+.colors{display:flex;flex-wrap:wrap;margin:6px -5px 0}
+.colors button{width:52px;height:52px;margin:5px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 2px var(--paper-line)}
+.colors button[aria-pressed="true"]{box-shadow:0 0 0 4px var(--panel)}
+.field{width:100%;min-height:52px;border:2.5px solid var(--paper-line);border-radius:12px;padding:10px 14px;background:#fff}
+.howto{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-gap:8px;margin-top:14px;font-size:13.5px;color:#5f584a}
+.howto div{background:#fff;border:2px solid var(--paper-line);border-radius:12px;padding:8px 10px}
+.howto b{display:block;color:var(--panel);font-size:14.5px}
+.cert{text-align:center;border:6px double var(--lantern-deep);border-radius:18px;padding:22px;background:#FFFDF6}
+.cert h2{font-size:38px}
+.cert .name{font-family:var(--f-display);font-size:34px;color:var(--lantern-deep);margin:8px 0}
+#confetti{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+
+/* teacher */
+.tabs{display:flex;flex-wrap:wrap;margin:-4px -4px 10px}
+.tabs button{margin:4px;min-height:46px;padding:0 14px;border-radius:12px;border:2px solid var(--paper-line);background:#fff;font-weight:700}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--cream);border-color:var(--panel)}
+.clock{font-family:var(--f-display);font-size:min(22vw,150px);line-height:1;text-align:center;color:var(--panel);font-variant-numeric:tabular-nums}
+.clock.warn{color:var(--lantern-deep)} .clock.zero{color:#c4554a}
+.segs{display:flex;flex-wrap:wrap;margin:0 -4px}
+.segs button{margin:4px;min-height:44px;padding:0 12px;border-radius:999px;border:2px solid var(--paper-line);background:#fff;font-size:14px}
+.segs button[aria-current="true"]{background:var(--lantern);border-color:var(--lantern-deep);font-weight:700}
+.bignum{font-family:var(--f-display);font-size:min(30vw,180px);line-height:1;text-align:center;color:var(--lantern-deep)}
+.orderlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-gap:8px;padding:0;margin:10px 0 0;list-style:none;counter-reset:o}
+.orderlist li{background:#fff;border:2px solid var(--paper-line);border-radius:12px;padding:10px 12px;font-size:18px;counter-increment:o}
+.orderlist li::before{content:counter(o) "번째 ";font-family:var(--f-display);color:var(--lantern-deep)}
+.row{display:flex;flex-wrap:wrap;align-items:center;margin:-4px}
+.row > *{margin:4px}
+.note{font-size:14px;color:#6a6250}
+#nogl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 32px));background:var(--paper);border:4px solid var(--panel);border-radius:20px;padding:20px;text-align:center}
+
+@media (max-width:700px){
+  #hudTL{max-width:62vw}
+  .track{font-size:13px}
+  #mini{width:96px;height:96px}
+  .ibtn{width:46px;height:46px;margin-left:6px}
+  #joy{width:118px;height:118px}
+  #knob{width:54px;height:54px;margin:-27px 0 0 -27px}
+  #act{min-width:96px;height:96px;font-size:18px}
+  #camBtns{bottom:calc(136px + env(safe-area-inset-bottom,0px))}
+  #dlg{grid-template-columns:minmax(0,1fr)}
+  #dlg .por{width:48px;height:48px;font-size:22px;border-radius:12px}
+  #dlg .txt{font-size:17px}
+  .grid3,.howto{grid-template-columns:minmax(0,1fr)}
+  .tcard h1{font-size:36px}
+  .mark{width:48px;height:48px;margin-left:4px}
+  .crit{grid-template-columns:minmax(0,1fr)}
+  .ibtn .lbl{display:none}
+}
+@media (max-width:560px){
+  #hudTL{top:calc(70px + env(safe-area-inset-top,0px));max-width:calc(100vw - 24px)}
+  .pcard{padding:6px 10px 8px 6px}
+  .ava{width:38px;height:38px;font-size:17px}
+  #mini{display:none}
+}
+@media (max-height:520px){ #mini{display:none} .track{display:none} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+<div id="stage" aria-label="토의 캠프 3D 세계">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div id="tags" aria-hidden="true"></div>
+
+  <div class="hud" id="hudTL" hidden>
+    <div class="pcard"><div class="ava" id="hAva">나</div>
+      <div style="min-width:0"><div class="pname" id="hName">캠퍼</div><div class="ptitle"><span class="lv" id="hLv">Lv.1</span><span id="hTitle">새내기 캠퍼</span></div><div class="xp" role="progressbar" aria-label="경험치" id="hXpBar" aria-valuemin="0" aria-valuemax="100"><i id="hXp"></i></div></div></div>
+    <div class="track" id="hTrack" role="status"><b>지금 할 일</b><span id="hTrackTxt"></span></div>
+  </div>
+
+  <div class="hud" id="hudTR" hidden>
+    <div class="iconrow">
+      <button class="ibtn" id="bQuest" aria-label="퀘스트 일지"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6"/><path d="M6 3a2 2 0 0 0-2 2v1h4V5a2 2 0 0 0-2-2zM6 21a2 2 0 0 1-2-2v-1h4v1a2 2 0 0 1-2 2zM8 6v12M11 8h5M11 12h5M11 16h3"/></svg><span class="lbl">퀘스트</span><span class="dot" id="qDot" hidden></span></button>
+      <button class="ibtn" id="bBag" aria-label="가방: 배지와 스킬"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14l-1 11H6z"/><path d="M9 9V7a3 3 0 0 1 6 0v2"/><circle cx="12" cy="14" r="2"/></svg><span class="lbl">가방</span></button>
+      <button class="ibtn" id="bTeach" aria-label="선생님 도구"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg><span class="lbl">선생님</span></button>
+      <button class="ibtn" id="bSet" aria-label="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span class="lbl">설정</span></button>
+    </div>
+    <canvas id="mini" width="264" height="264" aria-hidden="true"></canvas>
+  </div>
+
+  <div id="joy" hidden aria-hidden="true"><div id="knob"></div></div>
+  <div id="camBtns" hidden><button id="camL" aria-label="시점 왼쪽으로 돌리기">⟲</button><button id="camR" aria-label="시점 오른쪽으로 돌리기">⟳</button><button id="camZ" aria-label="시점 가깝게 또는 멀게">⤢</button></div>
+  <button id="act" hidden disabled aria-live="polite">걷기</button>
+
+  <div id="float" aria-live="polite"></div>
+  <div id="banner" hidden role="status"></div>
+  <section id="dlg" hidden role="dialog" aria-modal="false" aria-labelledby="dlgWho"></section>
+  <div id="sheet" hidden><div class="sheet" role="dialog" aria-modal="true" id="sheetBox"></div></div>
+  <canvas id="confetti" hidden aria-hidden="true"></canvas>
+
+  <div id="title">
+    <div class="tcard">
+      <p class="kick">5학년 국어 · 4. 의견을 조정해요 · 5/13차시 · 교과서 190~191쪽</p>
+      <h1>토의 캠프 <span>3D</span></h1>
+      <p>캠프장을 돌아다니며 친구들을 만나고, 세 가지 퀘스트를 깨서 <b>토의 마스터</b> 수료증을 받아요.</p>
+      <p class="goal"><b>오늘의 학습 목표</b><br>다양한 의견을 조정하며 토의할 수 있다.</p>
+      <label for="pName"><b>내 캠퍼 이름</b></label>
+      <input class="field" id="pName" maxlength="8" autocomplete="off" placeholder="이름이나 별명">
+      <p style="margin:12px 0 0"><b>옷 색깔</b></p>
+      <div class="colors" id="pColors" role="group" aria-label="옷 색깔"></div>
+      <div class="row" style="margin-top:14px"><button class="btn btn-hot" id="bStart">캠프 입장!</button><button class="btn btn-soft" id="bCont" hidden>이어서 하기</button></div>
+      <div class="howto">
+        <div><b>움직이기</b>왼쪽 아래 조이스틱 · 땅 터치 · 키보드 화살표/WASD</div>
+        <div><b>말 걸기</b>친구 머리 위 <span style="color:#C9761A">!</span> 표시 · 주황 버튼 · 스페이스</div>
+        <div><b>시점 돌리기</b>화면을 손가락으로 밀기 · Q/E 키</div>
+      </div>
+    </div>
+  </div>
+  <div id="nogl" hidden><h2 style="font-family:var(--f-display);font-weight:400;margin:0 0 8px">3D 화면을 켤 수 없어요</h2><p>이 기기에서는 3D 그래픽(WebGL)을 쓸 수 없어요. 오른쪽 위 <b>퀘스트 일지</b>에서 퀘스트를 바로 시작할 수 있어요.</p></div>
+</div>
+<script>
+/* ===== 미니 3D 엔진: WebGL1, 로우폴리 플랫 셰이딩, 안개, 블롭 그림자 ===== */
+var E3 = (function(){
+  'use strict';
+  /* --- 행렬 (열 우선) --- */
+  function ident(){ return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; }
+  function mul(a,b){
+    var o=new Array(16);
+    for (var c=0;c<4;c++) for (var r=0;r<4;r++){
+      o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];
+    }
+    return o;
+  }
+  function persp(fovy,asp,n,f){ var t=1/Math.tan(fovy/2), nf=1/(n-f); return [t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)*nf,-1, 0,0,2*f*n*nf,0]; }
+  function sub(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+  function cross(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function norm(a){ var l=Math.sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; }
+  function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+  function lookAt(e,t,u){
+    var z=norm(sub(e,t)), x=norm(cross(u,z)), y=cross(z,x);
+    return [x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot(x,e),-dot(y,e),-dot(z,e),1];
+  }
+  function trs(x,y,z, rx,ry,rz, sx,sy,sz){
+    if (sy===undefined){ sy=sx; sz=sx; } if (sx===undefined){ sx=sy=sz=1; }
+    var cx=Math.cos(rx||0), snx=Math.sin(rx||0), cy=Math.cos(ry||0), sny=Math.sin(ry||0), cz=Math.cos(rz||0), snz=Math.sin(rz||0);
+    // M = T * Ry * Rx * Rz * S  (열 우선 배열)
+    var Ry=[cy,0,-sny,0, 0,1,0,0, sny,0,cy,0, 0,0,0,1];
+    var Rx=[1,0,0,0, 0,cx,snx,0, 0,-snx,cx,0, 0,0,0,1];
+    var Rz=[cz,snz,0,0, -snz,cz,0,0, 0,0,1,0, 0,0,0,1];
+    var m=mul(mul(Ry,Rx),Rz);
+    return [m[0]*sx,m[1]*sx,m[2]*sx,0, m[4]*sy,m[5]*sy,m[6]*sy,0, m[8]*sz,m[9]*sz,m[10]*sz,0, x,y,z,1];
+  }
+  function xfPoint(m,p){ return [m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12], m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13], m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]]; }
+  function xfVec(m,p){ return [m[0]*p[0]+m[4]*p[1]+m[8]*p[2], m[1]*p[0]+m[5]*p[1]+m[9]*p[2], m[2]*p[0]+m[6]*p[1]+m[10]*p[2]]; }
+  function hex(h){ h=h.replace('#',''); return [parseInt(h.substr(0,2),16)/255, parseInt(h.substr(2,2),16)/255, parseInt(h.substr(4,2),16)/255]; }
+  function shade(c,k){ return [Math.min(1,c[0]*k),Math.min(1,c[1]*k),Math.min(1,c[2]*k)]; }
+
+  /* --- 지오메트리 --- */
+  function Geo(){ this.d=[]; }
+  Geo.prototype.tri=function(a,b,c,col){
+    var n=norm(cross(sub(b,a),sub(c,a)));
+    this.d.push(a[0],a[1],a[2],n[0],n[1],n[2],col[0],col[1],col[2],
+                b[0],b[1],b[2],n[0],n[1],n[2],col[0],col[1],col[2],
+                c[0],c[1],c[2],n[0],n[1],n[2],col[0],col[1],col[2]);
+    return this;
+  };
+  Geo.prototype.quad=function(a,b,c,d,col){ this.tri(a,b,c,col); this.tri(a,c,d,col); return this; };
+  Geo.prototype.add=function(g,m){
+    var s=g.d; m=m||ident();
+    for (var i=0;i<s.length;i+=9){
+      var p=xfPoint(m,[s[i],s[i+1],s[i+2]]), n=norm(xfVec(m,[s[i+3],s[i+4],s[i+5]]));
+      this.d.push(p[0],p[1],p[2],n[0],n[1],n[2],s[i+6],s[i+7],s[i+8]);
+    }
+    return this;
+  };
+  Geo.prototype.put=function(g,x,y,z,rx,ry,rz,sx,sy,sz){ return this.add(g, trs(x,y,z,rx,ry,rz,sx,sy,sz)); };
+  // 상자: 바닥 y=0, 가운데 정렬
+  function box(w,h,d,col,top){
+    var g=new Geo(), x=w/2, z=d/2, t=top||col, sd=shade(col,0.92);
+    var A=[-x,0,-z],B=[x,0,-z],C=[x,0,z],D=[-x,0,z],A2=[-x,h,-z],B2=[x,h,-z],C2=[x,h,z],D2=[-x,h,z];
+    g.quad(D,C,C2,D2,col); g.quad(B,A,A2,B2,sd); g.quad(C,B,B2,C2,sd); g.quad(A,D,D2,A2,col);
+    g.quad(D2,C2,B2,A2,t); g.quad(A,B,C,D,shade(col,0.6));
+    return g;
+  }
+  // 원기둥/원뿔: 바닥 y=0 ~ y=h
+  function cyl(rt,rb,h,seg,col,cap){
+    var g=new Geo(); cap=cap||col;
+    for (var i=0;i<seg;i++){
+      var a0=i/seg*Math.PI*2, a1=(i+1)/seg*Math.PI*2;
+      var b0=[Math.sin(a0)*rb,0,Math.cos(a0)*rb], b1=[Math.sin(a1)*rb,0,Math.cos(a1)*rb];
+      var t0=[Math.sin(a0)*rt,h,Math.cos(a0)*rt], t1=[Math.sin(a1)*rt,h,Math.cos(a1)*rt];
+      var c=(i%2)?col:shade(col,0.95);
+      if (rt>0.0001){ g.quad(b0,b1,t1,t0,c); g.tri([0,h,0],t0,t1,cap); } else g.tri(b0,b1,[0,h,0],c);
+      if (rb>0.0001) g.tri([0,0,0],b1,b0,shade(col,0.6));
+    }
+    return g;
+  }
+  // 정이십면체 구 (detail 0/1), jitter로 바위 느낌
+  function ico(r,detail,col,jit,seed){
+    var t=(1+Math.sqrt(5))/2;
+    var v=[[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]].map(norm);
+    var f=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+    for (var k=0;k<(detail||0);k++){
+      var nf=[], cache={};
+      var mid=function(a,b){ var key=a<b?a+'_'+b:b+'_'+a; if(cache[key]!==undefined) return cache[key]; v.push(norm([(v[a][0]+v[b][0])/2,(v[a][1]+v[b][1])/2,(v[a][2]+v[b][2])/2])); cache[key]=v.length-1; return cache[key]; };
+      f.forEach(function(tr){ var a=mid(tr[0],tr[1]), b=mid(tr[1],tr[2]), c=mid(tr[2],tr[0]); nf.push([tr[0],a,c],[tr[1],b,a],[tr[2],c,b],[a,b,c]); });
+      f=nf;
+    }
+    var s=seed||1; function rnd(){ s=(s*16807)%2147483647; return s/2147483647; }
+    var vv=v.map(function(p){ var k=1+(jit?(rnd()-0.5)*jit:0); return [p[0]*r*k,p[1]*r*k,p[2]*r*k]; });
+    var g=new Geo();
+    f.forEach(function(tr,i){ g.tri(vv[tr[0]],vv[tr[1]],vv[tr[2]], jit?shade(col,0.9+0.2*((i*7)%5)/5):col); });
+    return g;
+  }
+  function disc(r,seg,col,y){ var g=new Geo(); y=y||0; for(var i=0;i<seg;i++){ var a0=i/seg*Math.PI*2,a1=(i+1)/seg*Math.PI*2; g.tri([0,y,0],[Math.sin(a0)*r,y,Math.cos(a0)*r],[Math.sin(a1)*r,y,Math.cos(a1)*r],col); } return g; }
+
+  /* --- 렌더러 --- */
+  var VS='attribute vec3 aP;attribute vec3 aN;attribute vec3 aC;uniform mat4 uVP;uniform mat4 uM;varying vec3 vC;varying vec3 vN;varying float vD;'+
+    'void main(){vec4 w=uM*vec4(aP,1.0);gl_Position=uVP*w;vN=(uM*vec4(aN,0.0)).xyz;vC=aC;vD=gl_Position.w;}';
+  var FS='precision mediump float;uniform vec3 uL;uniform vec3 uFog;uniform vec2 uFR;uniform vec3 uEm;uniform float uA;uniform float uFlat;varying vec3 vC;varying vec3 vN;varying float vD;'+
+    'void main(){vec3 n=normalize(vN);float d=max(dot(n,uL),0.0);float h=0.5+0.5*n.y;vec3 c=mix(vC*(0.40+0.20*h+0.58*d),vC,uFlat)+uEm;'+
+    'float f=clamp((vD-uFR.x)/(uFR.y-uFR.x),0.0,1.0);gl_FragColor=vec4(mix(c,uFog,f),uA);}';
+  function Renderer(canvas){
+    var gl=null, opts={antialias:true,alpha:false,premultipliedAlpha:false,powerPreference:'default'};
+    try{ gl=canvas.getContext('webgl',opts)||canvas.getContext('experimental-webgl',opts); }catch(e){ gl=null; }
+    if (!gl) throw new Error('nowebgl');
+    this.gl=gl; this.canvas=canvas;
+    function sh(t,s){ var o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; }
+    var p=gl.createProgram(); gl.attachShader(p,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(p,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(p);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error('link');
+    gl.useProgram(p); this.p=p;
+    var self=this; this.u={}; ['uVP','uM','uL','uFog','uFR','uEm','uA','uFlat'].forEach(function(n){ self.u[n]=gl.getUniformLocation(p,n); });
+    this.aP=gl.getAttribLocation(p,'aP'); this.aN=gl.getAttribLocation(p,'aN'); this.aC=gl.getAttribLocation(p,'aC');
+    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.fog=[0.80,0.89,0.87]; this.fogR=[30,78];
+    this.light=norm([0.45,0.85,0.35]);
+  }
+  Renderer.prototype.mesh=function(geo){
+    var gl=this.gl, b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(geo.d),gl.STATIC_DRAW);
+    return {b:b, n:geo.d.length/9};
+  };
+  Renderer.prototype.frame=function(vp){
+    var gl=this.gl; gl.viewport(0,0,this.canvas.width,this.canvas.height);
+    gl.clearColor(this.fog[0],this.fog[1],this.fog[2],1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    gl.uniformMatrix4fv(this.u.uVP,false,vp); gl.uniform3fv(this.u.uL,this.light); gl.uniform3fv(this.u.uFog,this.fog); gl.uniform2fv(this.u.uFR,this.fogR);
+  };
+  var ZERO=[0,0,0];
+  Renderer.prototype.draw=function(m,model,em,alpha,flat){
+    var gl=this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER,m.b);
+    gl.enableVertexAttribArray(this.aP); gl.vertexAttribPointer(this.aP,3,gl.FLOAT,false,36,0);
+    gl.enableVertexAttribArray(this.aN); gl.vertexAttribPointer(this.aN,3,gl.FLOAT,false,36,12);
+    gl.enableVertexAttribArray(this.aC); gl.vertexAttribPointer(this.aC,3,gl.FLOAT,false,36,24);
+    gl.uniformMatrix4fv(this.u.uM,false,model||IDENT);
+    gl.uniform3fv(this.u.uEm,em||ZERO); gl.uniform1f(this.u.uA,alpha==null?1:alpha); gl.uniform1f(this.u.uFlat,flat?1:0);
+    if (alpha!=null && alpha<1){ gl.enable(gl.BLEND); gl.depthMask(false); }
+    gl.drawArrays(gl.TRIANGLES,0,m.n);
+    if (alpha!=null && alpha<1){ gl.disable(gl.BLEND); gl.depthMask(true); }
+  };
+  var IDENT=ident();
+  return {Geo:Geo, box:box, cyl:cyl, ico:ico, disc:disc, Renderer:Renderer, mul:mul, persp:persp, lookAt:lookAt, trs:trs, ident:ident, hex:hex, shade:shade, norm:norm, cross:cross, sub:sub, dot:dot, xfPoint:xfPoint};
+})();
+
+(function(){
+'use strict';
+  var RULES = [
+    {t:'차례를 지켜 말해요', d:'손을 들고, 사회자가 이름을 부르면 말해요.'},
+    {t:'친구 말을 끝까지 들어요', d:'말을 끊지 않고, 고개를 끄덕이며 들어요.'},
+    {t:'근거를 들어 말해요', d:'“왜냐하면 ~ 때문이에요.”로 까닭을 함께 말해요.'},
+    {t:'사람이 아니라 의견을 이야기해요', d:'친구를 비난하지 않고, 의견의 좋은 점과 생각해 볼 점을 말해요.'},
+    {t:'주제에서 벗어나지 않아요', d:'지금 정해야 할 문제에 대해서만 이야기해요.'},
+    {t:'적은 수의 의견도 존중해요', d:'한 명의 의견이라도 끝까지 들어 보고 함께 따져 봐요.'},
+    {t:'모두가 참여해요', d:'말하지 않은 친구에게도 의견을 물어봐요.'},
+    {t:'말하는 시간을 지켜요', d:'혼자 길게 말하지 않고, 짧고 분명하게 말해요.'},
+    {t:'더 나은 의견은 받아들여요', d:'내 생각을 바꾸는 것도 멋진 토의 태도예요.'}
+  ];
+  var SCENES = [
+    {who:'민준', act:'친구 말을 끊고 큰 소리로', say:'“그건 말도 안 돼! 내 말이 맞아.”', good:false, rule:'끝까지 듣기 · 차례 지키기', ex:'친구 말을 중간에 끊으면 친구는 하고 싶은 말을 다 하지 못해요. 끝까지 들은 뒤, 손을 들고 차례에 말해요.'},
+    {who:'서연', act:'손을 들고 차례를 기다린 뒤', say:'“저는 피구가 좋다고 생각해요. 왜냐하면 우리 반 모두가 규칙을 알고 있기 때문이에요.”', good:true, rule:'근거 들어 말하기', ex:'의견과 함께 까닭(근거)을 말해서 친구들이 서연이 생각을 쉽게 이해할 수 있어요.'},
+    {who:'지호', act:'팔짱을 끼고', say:'“너는 맨날 이상한 의견만 내더라.”', good:false, rule:'비난하지 않기', ex:'의견이 아니라 친구를 공격하는 말이에요. 의견에 대해 “이런 점은 걱정돼요.”처럼 말해요.'},
+    {who:'하은', act:'고개를 끄덕이며', say:'“도윤이 의견은 모두 함께할 수 있어서 좋아요. 그런데 비가 오면 어떻게 할지 궁금해요.”', good:true, rule:'좋은 점 · 생각해 볼 점 말하기', ex:'친구 의견의 좋은 점을 먼저 말하고, 생각해 볼 점은 질문으로 부드럽게 말했어요. 의견 조정의 첫걸음이에요.'},
+    {who:'도윤', act:'체육대회 종목을 정하는 중에', say:'“그런데 어제 본 영상 진짜 웃겼어! 다들 봤어?”', good:false, rule:'주제에서 벗어나지 않기', ex:'지금은 체육대회 종목을 정하는 시간이에요. 주제와 관계없는 이야기는 토의 시간을 빼앗아요.'},
+    {who:'예린', act:'한 친구만 반대하자', say:'“한 명만 반대하니까 그냥 무시하고 정하자.”', good:false, rule:'소수 의견 존중하기', ex:'한 명의 의견에도 중요한 까닭이 있을 수 있어요. 왜 반대하는지 먼저 들어 봐요.'},
+    {who:'수아', act:'사회자로서', say:'“아직 말하지 않은 준우의 의견도 들어 볼까요?”', good:true, rule:'모두 참여하기', ex:'모든 모둠원이 의견을 말할 수 있도록 기회를 주었어요. 다양한 의견이 모여야 더 좋은 결론이 나와요.'},
+    {who:'태민', act:'혼자 5분째 계속 말하며', say:'“그리고 또… 그리고 또… 아직 할 말이 많아!”', good:false, rule:'말하는 시간 지키기', ex:'한 사람이 너무 오래 말하면 다른 친구들이 말할 기회가 없어요. 핵심만 짧고 분명하게 말해요.'},
+    {who:'지우', act:'친구가 말하는 동안', say:'(눈을 맞추고 고개를 끄덕이며 중요한 내용을 메모한다)', good:true, rule:'끝까지 듣기', ex:'메모하며 들으면 친구 의견을 정확히 기억하고, 나중에 공정하게 비교할 수 있어요.'},
+    {who:'현우', act:'친구의 근거를 듣고', say:'“제 생각이 바뀌었어요. 서연이 근거를 들어 보니 그 방법이 더 알맞은 것 같아요.”', good:true, rule:'더 나은 의견 받아들이기', ex:'더 알맞은 의견을 받아들이는 건 지는 것이 아니에요. 함께 문제를 해결하려는 멋진 태도예요.'},
+    {who:'유나', act:'친구가 까닭을 묻자', say:'“그냥 내가 좋으니까 그렇게 해.”', good:false, rule:'근거 들어 말하기', ex:'“그냥”은 근거가 될 수 없어요. 다른 친구들도 고개를 끄덕일 수 있는 까닭을 말해요.'},
+    {who:'시우', act:'모둠 토의 시간에', say:'(태블릿으로 다른 화면을 보며 아무 말도 하지 않는다)', good:false, rule:'모두 참여하기', ex:'토의는 모두의 문제를 함께 푸는 시간이에요. 짧게라도 내 생각을 말하고 친구 말에 귀 기울여요.'}
+  ];
+
+  /* ---------- content: methods + scenarios ---------- */
+  var METHODS = {
+    ask:{name:'질문으로 까닭 확인하기', short:'질문', tip:'왜 그렇게 생각하는지 물어보면 오해가 풀리고 진짜 바라는 것을 알 수 있어요.'},
+    common:{name:'공통점 찾기', short:'공통점', tip:'다른 의견 속에서도 같은 바람을 찾으면 함께 갈 방향이 보여요.'},
+    criteria:{name:'기준 정하고 판단하기', short:'기준', tip:'무엇이 중요한지 기준을 먼저 정하면 ‘누구 의견’이 아니라 ‘더 알맞은 의견’을 고를 수 있어요.'},
+    pros:{name:'장단점 비교하기', short:'장단점', tip:'의견마다 좋은 점과 아쉬운 점을 나란히 놓고 보면 공정하게 판단할 수 있어요.'},
+    blend:{name:'서로 양보해 절충안 만들기', short:'절충안', tip:'양쪽이 조금씩 양보해서 두 의견의 좋은 점을 합친 새 방법을 만들어요.'},
+    vote:{name:'다수결은 충분히 토의한 뒤에', short:'다수결', tip:'충분히 이야기하고 조정한 뒤에도 의견이 갈릴 때 다수결을 써요. 정해진 결과는 함께 지켜요.'}
+  };
+  var METHOD_ORDER = ['ask','common','criteria','pros','blend','vote'];
+
+  var SCENARIOS = [
+    {
+      id:'s1', title:'체육대회 종목 정하기', desc:'반 대항 경기 종목, 축구일까요 피구일까요?',
+      situ:'다음 주 학년 체육대회에서 우리 반이 나갈 종목을 하나 정해야 해요. 여러분은 이 모둠의 모둠원이에요.',
+      turns:[
+        {lines:[['수아','체육대회에서 우리 반이 나갈 종목을 하나 정해야 해요.'],['민준','축구가 제일 재밌어요! 무조건 축구예요.'],['서연','축구는 공을 잘 차는 친구만 재밌어요. 저는 피구가 좋아요.']],
+          opts:[
+            {t:'민준이는 축구가 왜 좋은지, 서연이는 피구가 왜 좋은지 까닭을 더 들어 볼까요?', k:'good', m:'ask', h:12, s:15, fb:'좋아요! 의견만 부딪치면 다툼이 돼요. 까닭을 물어보면 서로 무엇을 바라는지 알 수 있어요.'},
+            {t:'축구 좋아하는 애들은 다 자기만 생각해.', k:'bad', h:-20, s:-5, fb:'친구들을 한꺼번에 비난하는 말이에요. 모둠 분위기가 나빠지고 문제는 그대로예요.'},
+            {t:'시간 없으니까 지금 바로 손 들어서 많은 쪽으로 정해요!', k:'rush', h:-8, s:-10, fb:'아직 까닭도 듣지 않았어요. 다수결은 충분히 토의한 뒤에 써야 소수 의견도 존중받아요.'}
+          ]},
+        {lines:[['민준','축구는 다 같이 많이 뛰어서 운동이 많이 돼요.'],['서연','피구는 공을 잘 못 다루는 친구도 피하기만 해도 함께할 수 있어요.']],
+          opts:[
+            {t:'두 의견 모두 ‘반 친구들이 함께 즐겁게 운동하자’는 바람은 같아요. 그 바람에 더 맞는 종목을 찾아봐요.', k:'good', m:'common', h:15, s:15, fb:'훌륭해요! 서로 다른 의견 속 같은 바람을 찾아서 ‘우리’의 목표를 만들었어요.'},
+            {t:'서연이는 공을 못 차니까 피구 하자는 거지?', k:'bad', h:-20, s:-5, fb:'친구의 약점을 꼬집는 말은 상처가 돼요. 의견이 아니라 사람을 공격하지 않아요.'},
+            {t:'그런데 오늘 급식 메뉴 뭐였지?', k:'off', h:-3, s:-12, fb:'주제에서 벗어난 말이에요. 토의 시간은 정해져 있으니 주제에 집중해요.'}
+          ]},
+        {lines:[['수아','그럼 무엇을 기준으로 고르면 좋을까요?']],
+          opts:[
+            {t:'‘모두 참여할 수 있나요?’, ‘다칠 위험이 적나요?’, ‘정해진 시간 안에 끝나나요?’를 기준으로 하나씩 따져 봐요.', k:'good', m:'criteria', h:10, s:20, fb:'멋져요! 기준을 정하면 ‘누가 이기나’가 아니라 ‘무엇이 더 알맞나’를 생각하게 돼요.'},
+            {t:'기준은 필요 없어요. 목소리 큰 사람 말대로 해요.', k:'bad', h:-15, s:-10, fb:'목소리 크기는 공정한 기준이 아니에요. 모두가 납득할 수 있는 기준이 필요해요.'},
+            {t:'종목보다 우리 반 티셔츠 색깔부터 정해요!', k:'off', h:-3, s:-12, fb:'지금 해결할 문제가 아니에요. 정해야 할 것부터 차근차근 이야기해요.'}
+          ]},
+        {lines:[['지호','기준으로 따져 보니 피구가 더 잘 맞아요.'],['민준','음… 맞긴 한데, 그래도 축구도 하고 싶어요.']],
+          opts:[
+            {t:'이번 대회는 피구로 하고, 다음 달 학급 체육 시간에 축구 시합을 하는 건 어때요?', k:'good', m:'blend', h:18, s:15, fb:'최고예요! 서로 조금씩 양보해서 두 의견을 모두 살리는 절충안을 만들었어요.'},
+            {t:'민준이 의견은 졌으니까 이제 그만 말해.', k:'bad', h:-20, s:-5, fb:'토의는 이기고 지는 게임이 아니에요. 아쉬운 마음도 존중하며 함께 방법을 찾아요.'},
+            {t:'의견이 안 맞으니까 오늘은 정하지 말고 그냥 넘어가요.', k:'off', h:-5, s:-15, fb:'미루기만 하면 문제가 해결되지 않아요. 조정할 방법을 함께 찾아봐요.'}
+          ]}
+      ]
+    },
+    {
+      id:'s2', title:'점심시간 운동장 쓰기', desc:'축구하는 친구들과 술래잡기하는 친구들이 부딪쳤어요.',
+      situ:'점심시간에 우리 반이 쓸 수 있는 운동장 자리는 한정되어 있어요. 축구하는 친구들과 술래잡기하는 친구들이 서로 자리를 쓰겠다고 해요.',
+      turns:[
+        {lines:[['도윤','운동장은 우리가 먼저 나가서 축구했으니까 우리 자리야.'],['하은','너희 공 때문에 술래잡기하다가 맞을 뻔했어!']],
+          opts:[
+            {t:'하은아, 언제 어떤 일이 있었는지 자세히 말해 줄래요? 도윤이도 왜 넓은 자리가 필요한지 들어 봐요.', k:'good', m:'ask', h:15, s:12, fb:'좋아요! 양쪽의 까닭을 차분히 물어보니 다툼이 대화로 바뀌었어요.'},
+            {t:'먼저 온 사람이 임자지. 늦게 나온 사람이 잘못이야.', k:'bad', h:-18, s:-8, fb:'상대를 탓하는 말은 갈등을 키워요. 안전 문제처럼 중요한 까닭도 함께 살펴야 해요.'},
+            {t:'운동장 말고 학교에 새 강당을 지어 달라고 하면 되잖아요.', k:'off', h:-3, s:-12, fb:'지금 우리가 실천할 수 없는 방법이에요. 우리 힘으로 할 수 있는 해결책을 찾아요.'}
+          ]},
+        {lines:[['도윤','축구는 넓은 자리가 꼭 필요해요.'],['하은','술래잡기도 뛰어다녀야 하고, 무엇보다 안전이 중요해요.'],['지우','방법이 두 가지 나왔어요. 요일을 나눠 쓰기, 자리를 반씩 나누기예요.']],
+          opts:[
+            {t:'두 방법의 좋은 점과 아쉬운 점을 나란히 적어 비교해 봐요.', k:'good', m:'pros', h:10, s:20, fb:'훌륭해요! 장단점을 비교하면 내 의견, 네 의견이 아니라 방법 자체를 공정하게 볼 수 있어요.'},
+            {t:'하은이는 맨날 불평만 해.', k:'bad', h:-20, s:-5, fb:'친구를 깎아내리는 말이에요. 하은이가 걱정하는 ‘안전’은 모두에게 중요한 문제예요.'},
+            {t:'축구하는 사람이 더 많으니까 다수결로 축구팀이 다 써요.', k:'rush', h:-12, s:-8, fb:'충분히 토의하기 전에 숫자로만 정하면 적은 쪽은 계속 손해를 봐요.'}
+          ]},
+        {lines:[['지우','요일 나누기는 공평하지만 기다려야 하고, 반씩 나누기는 매일 놀 수 있지만 좁아요.']],
+          opts:[
+            {t:'요일을 나눠 쓰되, 축구하는 날에도 공이 가지 않는 쪽 구석은 술래잡기에 양보하는 건 어때요?', k:'good', m:'blend', h:18, s:15, fb:'멋져요! 두 방법의 좋은 점을 합치고 서로 조금씩 양보했어요.'},
+            {t:'너희가 양보 안 하면 우리도 절대 안 해.', k:'bad', h:-18, s:-8, fb:'맞서기만 하면 아무도 원하는 것을 얻지 못해요. 먼저 한 걸음 양보해 봐요.'},
+            {t:'그냥 선생님이 정해 주세요. 우리는 몰라요.', k:'off', h:-3, s:-12, fb:'우리 문제는 우리가 먼저 의견을 모아 봐요. 스스로 정한 약속은 더 잘 지켜져요.'}
+          ]},
+        {lines:[['지우','절충안이 나왔어요. 그런데 몇 명은 여전히 ‘반씩 나누기’가 더 좋대요. 충분히 이야기했는데도 의견이 둘로 나뉘어요.']],
+          opts:[
+            {t:'두 안의 장단점을 모두 이야기했으니 이제 다수결로 정하고, 정해진 안은 모두 함께 지켜요. 한 달 뒤에 다시 점검해요.', k:'good', m:'vote', h:12, s:20, fb:'정확해요! 충분히 토의한 뒤의 다수결은 공정한 방법이에요. 다시 점검하기로 해서 소수 의견도 존중했어요.'},
+            {t:'우리 안이 안 뽑히면 운동장에 안 나갈 거야.', k:'bad', h:-18, s:-8, fb:'함께 정한 결과를 따르지 않으면 토의한 의미가 없어져요.'},
+            {t:'투표하지 말고 가위바위보로 정해요!', k:'off', h:-5, s:-12, fb:'운에 맡기면 근거와 상관없이 정해져요. 의견을 따져 본 뒤에 정해요.'}
+          ]}
+      ]
+    },
+    {
+      id:'s3', title:'쉬는 시간 교실 소음', desc:'떠들고 싶은 친구, 조용히 쉬고 싶은 친구.',
+      situ:'쉬는 시간마다 교실이 너무 시끄러워서 책을 읽거나 쉬고 싶은 친구들이 힘들어해요. 학급 회의에서 함께 이야기해요.',
+      turns:[
+        {lines:[['수아','쉬는 시간에 교실이 너무 시끄럽다는 의견이 있어요.'],['태민','쉬는 시간인데 떠드는 게 당연하지!'],['예린','너무 시끄러우면 머리가 아파요.']],
+          opts:[
+            {t:'두 사람 모두 ‘쉬는 시간을 편하게 보내고 싶다’는 마음은 같아요.', k:'good', m:'common', h:15, s:12, fb:'좋아요! 반대처럼 보이는 의견에서 같은 마음을 찾으니 함께 해결할 출발점이 생겼어요.'},
+            {t:'예린이는 너무 예민해.', k:'bad', h:-20, s:-5, fb:'친구의 어려움을 무시하는 말이에요. 친구의 불편함도 존중해야 해요.'},
+            {t:'그럼 쉬는 시간을 아예 없애요!', k:'off', h:-8, s:-12, fb:'실천할 수도 없고 모두에게 도움이 되지 않는 의견이에요.'}
+          ]},
+        {lines:[['태민','그럼 쉬는 시간에 말도 하지 말라는 거예요?']],
+          opts:[
+            {t:'예린아, 어떤 소리가 가장 힘들어요? 그걸 알면 해결 방법을 찾기 쉬울 것 같아요.', k:'good', m:'ask', h:12, s:15, fb:'훌륭해요! 무엇이 진짜 문제인지 질문으로 확인하니 해결 방법이 구체적으로 보여요.'},
+            {t:'태민이는 원래 시끄러운 애라 안 돼.', k:'bad', h:-20, s:-5, fb:'친구에게 꼬리표를 붙이는 말이에요. 행동과 사람을 구분해서 말해요.'},
+            {t:'조용히 하자는 사람 손! … 많네. 이제 쉬는 시간엔 한 마디도 하지 마요.', k:'rush', h:-12, s:-8, fb:'충분히 이야기하지 않고 다수결로 밀어붙였어요. 게다가 아무도 지키기 어려운 결론이에요.'}
+          ]},
+        {lines:[['예린','소리 지르는 소리랑 뛰어다니는 소리가 제일 힘들어요.'],['지호','‘조용 존 만들기’, ‘쉬는 시간 음악 틀기’ 두 가지 생각이 있어요.']],
+          opts:[
+            {t:'두 방법의 좋은 점과 아쉬운 점을 비교해 봐요. 음악은 소리를 덮지만 더 시끄러워질 수도 있어요.', k:'good', m:'pros', h:10, s:20, fb:'멋져요! 장단점을 따져 보니 어떤 방법이 문제에 더 알맞은지 보이기 시작해요.'},
+            {t:'규칙 어기는 사람은 이름을 칠판에 적어서 창피를 주자.', k:'bad', h:-18, s:-8, fb:'친구를 창피하게 만드는 방법은 갈등을 더 키워요. 모두가 기분 좋게 지킬 방법을 찾아요.'},
+            {t:'그것보다 우리 반 이름 짓기가 더 급해요.', k:'off', h:-3, s:-12, fb:'주제에서 벗어난 의견이에요. 지금 이야기하는 문제에 집중해요.'}
+          ]},
+        {lines:[['태민','저는 친구랑 이야기는 하고 싶어요.'],['예린','저는 조용히 책 읽을 자리만 있으면 돼요.']],
+          opts:[
+            {t:'교실 뒤쪽은 ‘조용 존’, 앞쪽은 ‘이야기 존’으로 나누고, 소리 지르기와 뛰기는 하지 않기로 해요.', k:'good', m:'blend', h:18, s:18, fb:'최고예요! 이야기하고 싶은 친구도, 쉬고 싶은 친구도 원하는 것을 얻는 절충안이에요.'},
+            {t:'태민이만 조용히 하면 다 해결돼요.', k:'bad', h:-20, s:-5, fb:'한 사람에게 책임을 떠넘기는 말이에요. 모두 함께 지킬 약속을 만들어요.'},
+            {t:'어차피 안 지킬 테니까 정해도 소용없어요.', k:'off', h:-5, s:-15, fb:'포기하면 문제는 그대로예요. 지킬 수 있는 약속을 함께 만들어 봐요.'}
+          ]}
+      ]
+    }
+  ];
+
+  /* ---------- content: gem ---------- */
+  var CRITS = [
+    {id:'rel', q:'주제와 관련 있나요?', s:'사이좋게 지내는 것과 이어지나요?'},
+    {id:'do', q:'실천할 수 있나요?', s:'우리 반이 지금 할 수 있나요?'},
+    {id:'why', q:'근거가 알맞나요?', s:'까닭이 의견을 잘 뒷받침하나요?'},
+    {id:'all', q:'모두에게 도움이 되나요?', s:'일부가 아니라 반 전체에 좋은가요?'}
+  ];
+  var MARKS = {o:{sym:'○', word:'알맞아요', v:2}, t:{sym:'△', word:'조금 부족해요', v:1}, x:{sym:'×', word:'알맞지 않아요', v:0}};
+  var CYCLE = ['o','t','x'];
+  var OPINIONS = [
+    {id:'A', who:'서연', op:'매일 아침 ‘칭찬 한마디’ 시간을 가져요.', why:'칭찬을 들으면 기분이 좋아지고, 친구의 좋은 점을 찾다 보면 서로를 더 잘 알게 되기 때문이에요.',
+      model:{rel:'o',do:'o',why:'o',all:'o'},
+      ex:{rel:'친구 사이를 가깝게 하는 방법이라 주제와 딱 맞아요.',do:'아침 시간 몇 분이면 매일 할 수 있어요.',why:'칭찬 → 기분 좋음 → 서로 이해, 까닭이 의견을 잘 뒷받침해요.',all:'돌아가며 하면 모든 친구가 칭찬을 주고받아요.'}},
+    {id:'B', who:'민준', op:'우리 반 모두 함께 해외로 여행을 가요.', why:'함께 여행하면 친해지기 때문이에요.',
+      model:{rel:'o',do:'x',why:'t',all:'o'},
+      ex:{rel:'친해지는 방법이니 주제와는 관련 있어요.',do:'비용과 시간 때문에 우리 반이 실천하기 어려워요.',why:'까닭은 있지만 ‘왜 꼭 해외여야 하는지’는 설명하지 못해요.',all:'실현된다면 모두에게 즐거운 경험이 될 수 있어요.'}},
+    {id:'C', who:'지호', op:'쉬는 시간을 30분으로 늘려요.', why:'그냥 쉬는 시간이 길면 좋으니까요.',
+      model:{rel:'t',do:'x',why:'x',all:'t'},
+      ex:{rel:'노는 시간이 늘면 친해질 수도 있지만, 사이좋게 지내는 것과의 연결이 약해요.',do:'학교 시간표는 우리 반이 마음대로 바꿀 수 없어요.',why:'‘그냥 좋으니까’는 근거가 될 수 없어요.',all:'좋아하는 친구도 있지만 수업 시간이 줄어드는 문제가 생겨요.'}},
+    {id:'D', who:'하은', op:'다툼이 생기면 ‘마음 우체통’에 쪽지를 넣고, 학급 회의에서 함께 해결해요.', why:'직접 말하기 어려운 마음도 전할 수 있고, 반 전체가 해결 방법을 함께 찾을 수 있기 때문이에요.',
+      model:{rel:'o',do:'t',why:'o',all:'o'},
+      ex:{rel:'다툼을 푸는 방법이라 주제와 잘 맞아요.',do:'할 수 있지만 쪽지를 확인하고 회의할 시간을 꾸준히 마련해야 해요.',why:'말하기 어려운 마음까지 생각한 알맞은 근거예요.',all:'누구나 쪽지를 쓸 수 있어 모두에게 도움이 돼요.'}},
+    {id:'E', who:'도윤', op:'축구를 잘하는 친구들끼리 팀을 만들어 매일 시합해요.', why:'잘하는 친구끼리 하면 이길 수 있어서 재미있기 때문이에요.',
+      model:{rel:'t',do:'o',why:'t',all:'x'},
+      ex:{rel:'함께 노는 활동이지만, ‘우리 반 모두’가 사이좋게 지내는 것과는 거리가 있어요.',do:'점심시간에 충분히 할 수 있어요.',why:'재미는 까닭이 되지만, 사이좋게 지내는 것과 연결되지 않아요.',all:'축구를 잘하는 친구만 즐겁고, 다른 친구들은 빠지게 돼요.'}},
+    {id:'F', who:'예린', op:'급식에 떡볶이가 더 자주 나오면 좋겠어요.', why:'떡볶이는 모두가 좋아하는 음식이기 때문이에요.',
+      model:{rel:'x',do:'t',why:'t',all:'t'},
+      ex:{rel:'급식 메뉴는 ‘사이좋게 지내기’라는 주제와 관련이 없어요.',do:'건의는 할 수 있지만 메뉴는 우리 반이 정할 수 없어요.',why:'정말 ‘모두’ 좋아하는지 알 수 없어요.',all:'떡볶이를 못 먹는 친구도 있을 수 있어요.'}}
+  ];
+  function modelTotal(o){ var s=0; for(var i=0;i<CRITS.length;i++){ s+=MARKS[o.model[CRITS[i].id]].v; } return s; }
+  var BEST_ID = 'A';
+  /* ---------- teacher: timer ---------- */
+  var SEGS = [
+    {name:'도입', min:4, hint:'지난 시간 「왁자지껄 토의」 되돌아보기 → 학습 문제 확인 → 활동 안내 (토의 규칙 지킴이)'},
+    {name:'활동 1 · 의견 나누기', min:10, hint:'의견 조정 캠프: 차례대로 의견 말하기, 좋은 점과 생각해 볼 점 적기 (비난하지 않기)'},
+    {name:'활동 1 · 검토 기준표 만들기', min:6, hint:'교과서 기준에 우리 모둠만의 기준을 더해 기준표 완성하기'},
+    {name:'활동 2 · 명품 의견 찾아보기', min:15, hint:'기준표로 모든 의견을 공정하게 검토 → 명품 의견 합의 → 한 명이 다른 모둠 둘러보며 검토하기'},
+    {name:'정리', min:5, hint:'자기평가 · 다음 시간 예고: 월드 카페 토의'}
+  ];
+
+/* ===== 토의 캠프 3D: 월드 · 캐릭터 · 조작 · 퀘스트 · 대화 ===== */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function angLerp(a,b,t){ var d=((b-a+Math.PI*3)%(Math.PI*2))-Math.PI; return a+d*t; }
+var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- 저장 ---------- */
+var SAVE_KEY='tc3d_v1';
+var COLORS=['#E85D5D','#F2A13A','#4CB06A','#3E8FD6','#9A6BD8','#E86FA6'];
+var LEVELS=[[0,'새내기 캠퍼'],[90,'경청 탐험가'],[190,'근거 수집가'],[300,'공정한 검토자'],[420,'조정 기사'],[540,'합의 설계자'],[660,'토의 마스터']];
+function fresh(){ return {name:'',color:COLORS[2],xp:0,intro:false,rStart:false,rOK:{},rWrong:{},rDone:false,cStart:false,scen:{},methods:{},cDone:false,gStart:false,gems:{},gDone:false,finished:false,pos:[0,15],sound:true,lite:false}; }
+var G=fresh();
+function load(){ try{ var s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s&&s.name) return Object.assign(fresh(),s); }catch(e){} return null; }
+var saveT=null;
+function save(){ clearTimeout(saveT); saveT=setTimeout(function(){ try{ G.pos=[P.x,P.z]; localStorage.setItem(SAVE_KEY,JSON.stringify(G)); }catch(e){} },300); }
+function level(){ var l=0; for(var i=0;i<LEVELS.length;i++) if(G.xp>=LEVELS[i][0]) l=i; return l; }
+
+/* ---------- 소리 ---------- */
+var AC=null;
+function beep(type){
+  if(!G.sound) return;
+  try{
+    if(!AC){ var C=window.AudioContext||window.webkitAudioContext; if(!C) return; AC=new C(); }
+    var seq={tap:[[660,.06]],ok:[[660,.08],[880,.12]],no:[[330,.12],[262,.16]],lv:[[523,.1],[659,.1],[784,.1],[1046,.2]],bell:[[880,.25],[660,.35]]}[type]||[[600,.05]];
+    var t=AC.currentTime;
+    seq.forEach(function(n){ var o=AC.createOscillator(), g=AC.createGain(); o.type='triangle'; o.frequency.value=n[0]; g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.18,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+n[1]); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+n[1]+.02); t+=n[1]*.9; });
+  }catch(e){}
+}
+
+/* ---------- 3D 준비 ---------- */
+var R=null, canvas=$('gl'), GLOK=true;
+try{ R=new E3.Renderer(canvas); }catch(e){ GLOK=false; }
+var H=E3.hex, S=E3.shade;
+var C={grass:H('#86BF6A'),grass2:H('#78B25E'),path:H('#E2C98F'),trunk:H('#8A5A3C'),leaf1:H('#3F8F57'),leaf2:H('#5AA864'),leaf3:H('#2F7348'),rock:H('#9AA3A0'),hill:H('#6FA866'),water:H('#5EB4D6'),skin:H('#F4CBA4'),skin2:H('#D9A07A'),hair:H('#3B2A22'),hair2:H('#6B4026'),pants:H('#3C4A5C'),wood:H('#B07A4C'),wood2:H('#8E5F3A'),white:H('#F7F1E1'),cloud:H('#FFFFFF'),fire1:H('#FF9A2E'),fire2:H('#FFD45E'),stone:H('#7E8580'),dark:H('#2A241E'),flag:H('#F2A13A')};
+var ZONES={hq:{x:0,z:21,name:'캠프 본부'},forest:{x:-21,z:0,name:'규칙의 숲'},camp:{x:21,z:0,name:'조정 캠프파이어'},gem:{x:0,z:-21,name:'명품 의견 감정소'}};
+var OBST=[]; // {x,z,r}
+function seeded(seed){ var s=seed; return function(){ s=(s*16807)%2147483647; return s/2147483647; }; }
+
+function charGeo(o){ // o: shirt, pants, hair, skin, hat, hatCol, legs(bool)
+  var g=new E3.Geo(), sh=H(o.shirt), skin=o.skin||C.skin;
+  if(o.legs!==false){ g.put(E3.box(.22,.75,.24,o.pants||C.pants),-.13,0,0); g.put(E3.box(.22,.75,.24,o.pants||C.pants),.13,0,0); }
+  g.put(E3.cyl(.3,.36,.78,8,sh),0,.68,0);
+  g.put(E3.box(.14,.62,.16,sh),-.42,.82,0,0,0,.12); g.put(E3.box(.14,.62,.16,sh),.42,.82,0,0,0,-.12);
+  g.put(E3.ico(.11,0,skin),-.46,.78,0); g.put(E3.ico(.11,0,skin),.46,.78,0);
+  g.put(E3.cyl(.12,.12,.12,6,skin),0,1.44,0);
+  g.put(E3.ico(.38,1,skin),0,1.86,0);
+  g.put(E3.ico(.4,1,o.hair||C.hair),0,1.97,-.05,0,0,0,1,.72,1);
+  g.put(E3.box(.07,.1,.04,C.dark),-.13,1.84,.35); g.put(E3.box(.07,.1,.04,C.dark),.13,1.84,.35);
+  g.put(E3.box(.14,.03,.03,H('#C9665B')),0,1.7,.36);
+  if(o.hat==='ranger'){ g.put(E3.cyl(.62,.62,.05,10,H(o.hatCol||'#7A5A2E')),0,2.1,0); g.put(E3.cyl(.2,.36,.32,8,H(o.hatCol||'#7A5A2E')),0,2.12,0); }
+  if(o.hat==='cap'){ g.put(E3.cyl(.36,.4,.22,10,H(o.hatCol)),0,2.08,-.02); g.put(E3.box(.5,.04,.32,H(o.hatCol)),0,2.08,.3); }
+  if(o.hat==='wizard'){ g.put(E3.cyl(0,.42,.8,8,H(o.hatCol)),0,2.08,0); g.put(E3.cyl(.6,.6,.04,10,H(o.hatCol)),0,2.08,0); }
+  if(o.hat==='chief'){ g.put(E3.cyl(.5,.5,.06,12,H('#C9A24A')),0,2.12,0); g.put(E3.cyl(.3,.38,.34,10,H('#C9A24A')),0,2.12,0); g.put(E3.box(.62,.06,.06,H('#B34A3A')),0,2.24,0); }
+  return g;
+}
+function legGeo(pants){ var g=new E3.Geo(); g.put(E3.box(.22,.75,.24,pants||C.pants),0,-.75,0); return g; }
+function tree(g,x,z,s,kind){
+  g.put(E3.cyl(.16,.22,1.1,6,C.trunk),x,0,z,0,0,0,s,s,s);
+  if(kind===0){ g.put(E3.cyl(0,1.3,1.8,7,C.leaf1),x,.9*s,z,0,x,0,s,s,s); g.put(E3.cyl(0,1.0,1.5,7,C.leaf2),x,1.9*s,z,0,z,0,s,s,s); g.put(E3.cyl(0,.65,1.1,7,C.leaf1),x,2.8*s,z,0,0,0,s,s,s); }
+  else { g.put(E3.ico(1.15,0,kind===1?C.leaf2:C.leaf3,.25,Math.floor(x*13+z*7)+3),x,1.9*s,z,0,0,0,s,s,s); }
+  OBST.push({x:x,z:z,r:.55*s});
+}
+function rock(g,x,z,s,seed){ g.put(E3.ico(.8,0,C.rock,.45,seed),x,.35*s,z,0,seed,0,s,s*.7,s); OBST.push({x:x,z:z,r:.7*s}); }
+function tent(g,x,z,ry,col,size){
+  var s=size||1, c=H(col);
+  g.put(E3.cyl(0,2.1,2.5,4,c),x,0,z,0,ry+Math.PI/4,0,s,s,s);
+  var fx=x+Math.sin(ry)*1.08*s, fz=z+Math.cos(ry)*1.08*s;
+  g.put(E3.cyl(0,.62,1.25,3,C.dark),fx,0,fz,0,ry+Math.PI,0,s,s,s*.25);
+  g.put(E3.cyl(.04,.04,2.9,5,C.wood2),x,0,z,0,0,0,s,s,s);
+  OBST.push({x:x,z:z,r:1.6*s});
+}
+function buildWorld(){
+  var g=new E3.Geo(), rnd=seeded(42), i, a, x, z;
+  // 땅
+  for(i=0;i<48;i++){ var a0=i/48*Math.PI*2, a1=(i+1)/48*Math.PI*2;
+    for(var ring=0;ring<4;ring++){ var r0=ring*13, r1=(ring+1)*13, col=((i+ring)%2)?C.grass:C.grass2;
+      g.quad([Math.sin(a0)*r0,0,Math.cos(a0)*r0],[Math.sin(a0)*r1,0,Math.cos(a0)*r1],[Math.sin(a1)*r1,0,Math.cos(a1)*r1],[Math.sin(a1)*r0,0,Math.cos(a1)*r0],col); } }
+  // 길 (CCW가 위를 향하도록 시작점→끝점 방향 주의)
+  function road(x0,z0,x1,z1,w){ var dx=x1-x0,dz=z1-z0,L=Math.sqrt(dx*dx+dz*dz),nx=dz/L*w/2,nz=-dx/L*w/2,y=.03;
+    var A=[x0+nx,y,z0+nz],B=[x1+nx,y,z1+nz],Cc=[x1-nx,y,z1-nz],D=[x0-nx,y,z0-nz];
+    var n=E3.cross(E3.sub(B,A),E3.sub(Cc,A)); if(n[1]>0) g.quad(A,B,Cc,D,C.path); else g.quad(A,D,Cc,B,C.path); }
+  road(0,5,0,18,3); road(0,5,-14,1,3); road(0,5,14,1,3); road(0,5,0,-14,3);
+  g.add(E3.disc(4.2,20,C.path,.035),E3.trs(0,0,5));
+  g.add(E3.disc(5.5,20,C.path,.035),E3.trs(21,0,0));
+  g.add(E3.disc(6.5,22,S(C.path,.95),.035),E3.trs(0,0,-21));
+  g.add(E3.disc(5,20,C.path,.035),E3.trs(0,0,21));
+  // 경계 언덕
+  for(i=0;i<40;i++){ a=i/40*Math.PI*2+rnd()*.1; var rr=47+rnd()*4; g.put(E3.cyl(0,6+rnd()*3,4+rnd()*4,7,S(C.hill,.85+rnd()*.25)),Math.sin(a)*rr,-.2,Math.cos(a)*rr); }
+  // 연못
+  g.add(E3.disc(5.2,18,C.water,.04),E3.trs(17,0,-19)); OBST.push({x:17,z:-19,r:5});
+  for(i=0;i<8;i++){ a=i/8*Math.PI*2; rock(g,17+Math.sin(a)*5.5,-19+Math.cos(a)*5.5,.6+rnd()*.3,i+11); }
+  // 나무 흩뿌리기
+  var keep=[[0,21,8],[-21,0,9.5],[21,0,9],[0,-21,9],[0,5,5],[17,-19,6.5]];
+  var n=0, guard=0;
+  while(n<150 && guard<3000){ guard++; x=(rnd()-.5)*88; z=(rnd()-.5)*88; var d=Math.sqrt(x*x+z*z); if(d>43) continue;
+    var ok=true; keep.forEach(function(k){ var dx=x-k[0],dz=z-k[1]; if(dx*dx+dz*dz<k[2]*k[2]) ok=false; });
+    if(Math.abs(x)<2.6 && z>3 && z<18) ok=false; if(Math.abs(z-3)<2.6 && Math.abs(x)<14 ) ok=false; if(Math.abs(x)<2.6 && z<5 && z>-14) ok=false;
+    if(!ok) continue; tree(g,x,z,.8+rnd()*.6,Math.floor(rnd()*3)); n++; }
+  // 규칙의 숲 안쪽 원형 나무
+  for(i=0;i<10;i++){ a=i/10*Math.PI*2+.3; tree(g,-21+Math.sin(a)*3.2,Math.cos(a)*3.2,.9,i%3); }
+  // 꽃
+  for(i=0;i<120;i++){ x=(rnd()-.5)*80; z=(rnd()-.5)*80; if(x*x+z*z>1600) continue; var fc=[H('#FFFFFF'),H('#FFD45E'),H('#F08A7E'),H('#B38BE6')][i%4]; g.put(E3.ico(.12,0,fc),x,.12,z); }
+  // 본부
+  tent(g,-4.2,24,Math.PI*0.85,'#C96A3A',1.5); tent(g,4.6,24.5,-Math.PI*0.8,'#4B8FD6',1.2);
+  g.put(E3.cyl(.08,.08,6,6,H('#D8D8D0')),0,0,26.5); OBST.push({x:0,z:26.5,r:.4});
+  g.put(E3.box(1.6,.9,.06,C.flag),.8,4.9,26.5);
+  g.put(E3.box(.15,1.4,.15,C.wood2),4.2,0,19.2); g.put(E3.box(.15,1.4,.15,C.wood2),6.2,0,19.2); g.put(E3.box(2.5,1.4,.12,C.wood),5.2,1.1,19.2); g.put(E3.box(2.2,1.1,.04,C.white),5.2,1.25,19.28); OBST.push({x:5.2,z:19.2,r:1.3});
+  // 표지판(광장)
+  g.put(E3.box(.18,2.4,.18,C.wood2),1.6,0,6.5);
+  g.put(E3.box(1.6,.4,.1,C.wood),1.0,1.9,6.5,0,0,0); g.put(E3.box(1.6,.4,.1,C.wood),2.2,1.45,6.5,0,0,0); g.put(E3.box(.1,.4,1.6,C.wood),1.6,1.0,5.9);
+  OBST.push({x:1.6,z:6.5,r:.4});
+  // 캠프파이어
+  for(i=0;i<10;i++){ a=i/10*Math.PI*2; g.put(E3.ico(.35,0,C.stone,.3,i+5),21+Math.sin(a)*1.4,.15,Math.cos(a)*1.4); }
+  g.put(E3.cyl(.16,.16,1.8,6,C.wood2),21-.9,.2,0,0,0,Math.PI/2); g.put(E3.cyl(.16,.16,1.8,6,C.wood2),21,.2,-.9,Math.PI/2,0,0);
+  OBST.push({x:21,z:0,r:1.7});
+  for(i=0;i<6;i++){ a=i/6*Math.PI*2+.5; var lx=21+Math.sin(a)*3.4, lz=Math.cos(a)*3.4; g.put(E3.cyl(.28,.28,1.6,7,C.wood),lx,.28,lz,0,a,Math.PI/2); }
+  // 시나리오 텐트 3개
+  [['#E85D5D',-0.2],['#3E8FD6',2.0],['#9A6BD8',4.2]].forEach(function(t){ var tx=21+Math.sin(t[1])*7.2, tz=Math.cos(t[1])*7.2; tent(g,tx,tz,t[1]+Math.PI,t[0],1.05); });
+  // 감정소: 바위 반원 + 받침대
+  for(i=0;i<12;i++){ a=Math.PI*0.55+i/11*Math.PI*0.9; rock(g,Math.sin(a)*8.6,-21+Math.cos(a)*8.6,1.1+rnd()*.7,i+31); }
+  GEMPOS.forEach(function(q){ g.put(E3.cyl(.55,.7,.9,8,H('#D9D2C2')),q[0],0,q[1]); g.put(E3.cyl(.7,.7,.12,8,H('#BDB5A2')),q[0],.9,q[1]); OBST.push({x:q[0],z:q[1],r:.85}); });
+  return g;
+}
+var GEMPOS=[]; (function(){ for(var i=0;i<6;i++){ var a=-Math.PI*0.62+i/5*Math.PI*1.24; GEMPOS.push([Math.sin(a)*5,-21-Math.cos(a)*5]); } })();
+
+/* ---------- 엔티티 ---------- */
+var ENT=[]; // interactables
+var NPCS=[]; // 그리기용
+var PAL=['#E85D5D','#F2A13A','#4CB06A','#3E8FD6','#9A6BD8','#E86FA6','#2FB2A6','#D9B23C'];
+function addNPC(o){
+  o.yaw=o.yaw||0; o.base=o.yaw; o.r=o.r||2.6; o.bob=Math.random()*6; o.jump=0;
+  if(GLOK){ o.mesh=R.mesh(charGeo({shirt:o.color,hair:o.hair||(Math.random()<.5?C.hair:C.hair2),hat:o.hat,hatCol:o.hatCol,skin:o.skin})); }
+  OBST.push({x:o.x,z:o.z,r:.55});
+  ENT.push(o); NPCS.push(o); return o;
+}
+function addGem(i,x,z,col){ var o={id:'gem'+i,kind:'gem',idx:i,x:x,z:z,r:2.4,name:OPINIONS[i].who+'의 의견 보석',color:col,gemCol:H(col)}; ENT.push(o); return o; }
+
+var GUIDE={};
+function setupEntities(){
+  GUIDE.chief=addNPC({id:'chief',kind:'chief',name:'캠프 대장',x:0,z:19.5,yaw:Math.PI,color:'#2E5E4A',hat:'chief',skin:C.skin2});
+  GUIDE.board={id:'board',kind:'board',name:'토의 규칙 게시판',x:5.2,z:18,r:2.4}; ENT.push(GUIDE.board);
+  GUIDE.flag={id:'flag',kind:'flag',name:'수료식 깃대',x:0,z:25.6,r:2.4}; ENT.push(GUIDE.flag);
+  GUIDE.forest=addNPC({id:'g_forest',kind:'guide',q:'r',name:'숲지기 나래',x:-13.5,z:1.8,yaw:Math.PI/2,color:'#4CB06A',hat:'ranger'});
+  GUIDE.camp=addNPC({id:'g_camp',kind:'guide',q:'c',name:'불꽃지기 한결',x:14,z:2.2,yaw:-Math.PI/2,color:'#E8792E',hat:'cap',hatCol:'#B34A3A'});
+  GUIDE.gem=addNPC({id:'g_gem',kind:'guide',q:'g',name:'감정사 보라',x:2.2,z:-14,yaw:0,color:'#9A6BD8',hat:'wizard',hatCol:'#5B3E99'});
+  // 규칙의 숲 친구 12명 (두 겹 원)
+  SCENES.forEach(function(s,i){ var inner=i%2===0, a=i/12*Math.PI*2+(inner?0:.26), rr=inner?5.6:8.0;
+    var x=-21+Math.sin(a)*rr, z=Math.cos(a)*rr;
+    addNPC({id:'r'+i,kind:'rule',idx:i,name:s.who,x:x,z:z,yaw:Math.atan2(-21-x,-z),color:PAL[i%PAL.length]}); });
+  // 텐트 앞 사회자
+  [-0.2,2.0,4.2].forEach(function(a,i){ var tx=21+Math.sin(a)*4.6, tz=Math.cos(a)*4.6; addNPC({id:'t'+i,kind:'tent',idx:i,name:SCENARIOS[i].title,x:tx,z:tz,yaw:a,color:['#E85D5D','#3E8FD6','#9A6BD8'][i],hat:'cap',hatCol:['#8E2F2F','#1F5A8E','#4A2E80'][i]}); });
+  var gc=['#FF6F91','#4FC3F7','#FFD45E','#7FD69A','#B38BE6','#FF9C5A'];
+  OPINIONS.forEach(function(o,i){ addGem(i,GEMPOS[i][0],GEMPOS[i][1],gc[i]); });
+}
+
+/* ---------- 플레이어 & 카메라 ---------- */
+var P={x:0,z:17,yaw:Math.PI,vx:0,vz:0,walk:0,moving:false};
+var CAM={yaw:0,pitch:.62,dist:10.5,zoomIdx:1,cx:0,cz:17,curDist:10.5};
+var ZOOMS=[7,10.5,15];
+var PM={};
+function buildPlayer(){ if(!GLOK) return; var c=G.color; PM.body=R.mesh(charGeo({shirt:c,legs:false,hair:C.hair,hat:'cap',hatCol:c})); PM.leg=R.mesh(legGeo(C.pants)); }
+var STATIC=null, SHADOW=null, FL1=null, FL2=null, RING=null, CLOUD=null, GEMM={}, GLOW=null;
+
+/* ---------- 입력 ---------- */
+var KEYS={}, JOY={id:null,x:0,y:0,cx:0,cy:0}, DRAG={id:null,x:0,y:0,sx:0,sy:0,t:0,moved:false}, TARGET=null;
+window.addEventListener('keydown',function(e){ if(BUSY()) { if(e.key==='Escape') closeSheet(); return; } var k=e.key.toLowerCase(); KEYS[k]=true; if(k===' '||k==='enter'){ e.preventDefault(); doAct(); } if(k==='q') CAM.yaw+=.35; if(k==='e') CAM.yaw-=.35; });
+window.addEventListener('keyup',function(e){ KEYS[e.key.toLowerCase()]=false; });
+window.addEventListener('blur',function(){ KEYS={}; });
+var joy=$('joy'), knob=$('knob');
+joy.addEventListener('pointerdown',function(e){ e.preventDefault(); JOY.id=e.pointerId; try{ joy.setPointerCapture(e.pointerId); }catch(er){} var r=joy.getBoundingClientRect(); JOY.cx=r.left+r.width/2; JOY.cy=r.top+r.height/2; joyMove(e); TARGET=null; });
+joy.addEventListener('pointermove',function(e){ if(e.pointerId===JOY.id) joyMove(e); });
+function joyEnd(e){ if(e.pointerId!==JOY.id) return; JOY.id=null; JOY.x=JOY.y=0; knob.style.transform=''; }
+joy.addEventListener('pointerup',joyEnd); joy.addEventListener('pointercancel',joyEnd);
+function joyMove(e){ var max=joy.offsetWidth*.36, dx=e.clientX-JOY.cx, dy=e.clientY-JOY.cy, l=Math.sqrt(dx*dx+dy*dy); if(l>max){ dx=dx/l*max; dy=dy/l*max; } JOY.x=dx/max; JOY.y=dy/max; knob.style.transform='translate('+dx+'px,'+dy+'px)'; }
+canvas.addEventListener('pointerdown',function(e){ if(DRAG.id!==null) return; DRAG.id=e.pointerId; DRAG.x=DRAG.sx=e.clientX; DRAG.y=DRAG.sy=e.clientY; DRAG.t=Date.now(); DRAG.moved=false; try{ canvas.setPointerCapture(e.pointerId); }catch(er){} });
+canvas.addEventListener('pointermove',function(e){ if(e.pointerId!==DRAG.id) return; var dx=e.clientX-DRAG.x; DRAG.x=e.clientX; DRAG.y=e.clientY; if(Math.abs(e.clientX-DRAG.sx)+Math.abs(e.clientY-DRAG.sy)>10) DRAG.moved=true; if(DRAG.moved) CAM.yaw-=dx*.008; });
+function dragEnd(e){ if(e.pointerId!==DRAG.id) return; DRAG.id=null; if(!DRAG.moved && Date.now()-DRAG.t<450 && !BUSY()) pick(e.clientX,e.clientY); }
+canvas.addEventListener('pointerup',dragEnd); canvas.addEventListener('pointercancel',function(e){ if(e.pointerId===DRAG.id) DRAG.id=null; });
+canvas.addEventListener('wheel',function(e){ e.preventDefault(); CAM.dist=clamp(CAM.dist+(e.deltaY>0?1:-1),6,16); },{passive:false});
+$('camL').onclick=function(){ CAM.yaw+=Math.PI/4; }; $('camR').onclick=function(){ CAM.yaw-=Math.PI/4; };
+$('camZ').onclick=function(){ CAM.zoomIdx=(CAM.zoomIdx+1)%ZOOMS.length; CAM.dist=ZOOMS[CAM.zoomIdx]; };
+$('act').onclick=function(){ doAct(); };
+
+/* ---------- 화면 좌표 ---------- */
+var VP=E3.ident(), EYE=[0,0,0], LOOK=[0,0,0], VW=1, VHh=1, FOV=0.95;
+function project(x,y,z){ var m=VP, cx=m[0]*x+m[4]*y+m[8]*z+m[12], cy=m[1]*x+m[5]*y+m[9]*z+m[13], cw=m[3]*x+m[7]*y+m[11]*z+m[15]; if(cw<=0.1) return null; return [(cx/cw*.5+.5)*VW,(1-(cy/cw*.5+.5))*VHh,cw]; }
+function pick(sx,sy){
+  if(!GLOK) return;
+  var best=null, bd=56;
+  ENT.forEach(function(o){ var p=project(o.x,1.2,o.z); if(!p) return; var d=Math.sqrt((p[0]-sx)*(p[0]-sx)+(p[1]-sy)*(p[1]-sy)); var p2=project(o.x,2.0,o.z); if(p2){ var d2=Math.sqrt((p2[0]-sx)*(p2[0]-sx)+(p2[1]-sy)*(p2[1]-sy)); if(d2<d) d=d2; } if(d<bd){ bd=d; best=o; } });
+  if(best){ TARGET={x:best.x,z:best.z,ent:best}; beep('tap'); return; }
+  var f=E3.norm(E3.sub(LOOK,EYE)), rt=E3.norm(E3.cross(f,[0,1,0])), up=E3.cross(rt,f), t=Math.tan(FOV/2);
+  var nx=(sx/VW)*2-1, ny=1-(sy/VHh)*2, asp=VW/VHh;
+  var d=[f[0]+rt[0]*nx*t*asp+up[0]*ny*t, f[1]+rt[1]*nx*t*asp+up[1]*ny*t, f[2]+rt[2]*nx*t*asp+up[2]*ny*t];
+  if(d[1]>=-0.01) return; var k=-EYE[1]/d[1]; var gx=EYE[0]+d[0]*k, gz=EYE[2]+d[2]*k;
+  if(gx*gx+gz*gz>42*42) return; TARGET={x:gx,z:gz,ent:null,t:0};
+}
+
+/* ---------- 상호작용 ---------- */
+var NEAR=null;
+function BUSY(){ return !$('dlg').hidden || !$('sheet').hidden || !$('title').hidden; }
+function doAct(){ if(BUSY()) return; if(NEAR){ interact(NEAR); } }
+function interact(o){
+  beep('tap'); TARGET=null; P.moving=false;
+  if(o.kind==='rule') talkRule(o); else if(o.kind==='tent') talkTent(o); else if(o.kind==='gem') openAppraise(o.idx);
+  else if(o.kind==='guide') ({r:talkForest,c:talkCamp,g:talkGem})[o.q](o);
+  else if(o.kind==='chief') talkChief(o); else if(o.kind==='board') openBoard(); else if(o.kind==='flag') talkFlag();
+  o.talking=true; CUR=o;
+}
+var CUR=null;
+
+/* ---------- 대화창 ---------- */
+var typeT=null;
+function portrait(name,color){ return '<div class="por" style="background:'+(color||'#F7F1E1')+'" aria-hidden="true">'+esc((name||'?').charAt(0))+'</div>'; }
+/* d: {who, sub, color, text, act, html, choices:[{t,cls}], onChoice(i), next:{label, fn}, extra:[{label,fn,cls}]} */
+function dlg(d){
+  var el=$('dlg'); el.hidden=false; clearInterval(typeT);
+  var h=portrait(d.who,d.color)+'<div style="min-width:0"><div class="who" id="dlgWho">'+esc(d.who)+(d.sub?'<small>'+esc(d.sub)+'</small>':'')+'</div>'+(d.act?'<div class="act-line">'+esc(d.act)+'</div>':'')+'<div class="txt" id="dlgTxt"></div>'+(d.html||'');
+  if(d.choices){ h+='<div class="choices" role="group">'+d.choices.map(function(c,i){ return '<button class="choice '+(c.cls||'')+'" data-i="'+i+'"><span class="k">'+(i+1)+'</span><span>'+esc(c.t)+'</span></button>'; }).join('')+'</div>'; }
+  var btns=(d.extra||[]).slice(); if(d.next) btns.push(d.next);
+  if(btns.length) h+='<div class="next row">'+btns.map(function(b,i){ return '<button class="btn '+(b.cls||'btn-go')+'" data-b="'+i+'">'+esc(b.label)+'</button>'; }).join('')+'</div>';
+  h+='</div>'; el.innerHTML=h;
+  var txt=$('dlgTxt'), full=d.text||'';
+  if(REDUCED||full.length<2){ txt.textContent=full; } else { var n=0; txt.textContent=''; typeT=setInterval(function(){ n+=2; txt.textContent=full.slice(0,n); if(n>=full.length) clearInterval(typeT); },22); }
+  txt.onclick=function(){ clearInterval(typeT); txt.textContent=full; };
+  [].forEach.call(el.querySelectorAll('.choice'),function(b){ b.onclick=function(){ clearInterval(typeT); d.onChoice(+b.getAttribute('data-i')); }; });
+  [].forEach.call(el.querySelectorAll('[data-b]'),function(b){ b.onclick=function(){ clearInterval(typeT); btns[+b.getAttribute('data-b')].fn(); }; });
+  var first=el.querySelector('.choice,[data-b]'); if(first) setTimeout(function(){ try{ first.focus({preventScroll:true}); }catch(e){} },30);
+}
+function closeDlg(){ $('dlg').hidden=true; clearInterval(typeT); if(CUR){ CUR.talking=false; CUR=null; } refreshAll(); }
+function lines(arr,done){ var i=0; (function step(){ if(i>=arr.length){ done&&done(); return; } var L=arr[i++]; dlg({who:L.who,sub:L.sub,color:L.color,text:L.text,act:L.act,html:L.html,next:{label:i<arr.length?'다음 ▶':(L.last||'알겠어요'),fn:step}}); })(); }
+
+/* ---------- 보상 ---------- */
+function fx(t){ var f=$('float'), d=document.createElement('div'); d.className='fx'; d.textContent=t; f.appendChild(d); setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); },1700); }
+var bannerT=null;
+function banner(title,sub){ var b=$('banner'); b.innerHTML='<h2>'+esc(title)+'</h2>'+(sub?'<p>'+esc(sub)+'</p>':''); b.hidden=false; clearTimeout(bannerT); bannerT=setTimeout(function(){ b.hidden=true; },2600); }
+function addXP(n,why){ var l0=level(); G.xp+=n; fx('+'+n+' XP'+(why?' · '+why:'')); var l1=level(); if(l1>l0){ beep('lv'); banner('레벨 업! Lv.'+(l1+1),LEVELS[l1][1]); } save(); hud(); }
+
+/* ---------- 퀘스트 진행 계산 ---------- */
+function rCount(){ return Object.keys(G.rOK).length; }
+function cCount(){ return Object.keys(G.scen).filter(function(k){ return G.scen[k]&&G.scen[k].done; }).length; }
+function gCount(){ return Object.keys(G.gems).length; }
+function allDone(){ return G.rDone&&G.cDone&&G.gDone; }
+function nextStep(){
+  if(!G.intro) return ['캠프 본부','캠프 대장에게 말을 걸어요.',GUIDE.chief];
+  if(allDone() && !G.finished) return ['수료식','캠프 본부의 캠프 대장에게 가요!',GUIDE.chief];
+  if(G.finished) return ['완료','토의 마스터 수료! 못 푼 문제를 다시 풀어 봐도 좋아요.',null];
+  if(!G.rDone){ if(!G.rStart) return ['퀘스트 1 · 규칙의 숲','서쪽 숲의 숲지기 나래를 만나요.',GUIDE.forest]; if(rCount()<12) return ['퀘스트 1 · 규칙의 숲','머리 위 ! 친구들의 태도를 판정해요 ('+rCount()+'/12)',null]; return ['퀘스트 1 · 규칙의 숲','숲지기 나래에게 보고해요.',GUIDE.forest]; }
+  if(!G.cDone){ if(!G.cStart) return ['퀘스트 2 · 조정 캠프파이어','동쪽 캠프파이어의 불꽃지기 한결을 만나요.',GUIDE.camp]; if(cCount()<3) return ['퀘스트 2 · 조정 캠프파이어','텐트 앞 사회자와 토의를 이끌어요 ('+cCount()+'/3)',null]; return ['퀘스트 2 · 조정 캠프파이어','불꽃지기 한결에게 보고해요.',GUIDE.camp]; }
+  if(!G.gStart) return ['퀘스트 3 · 명품 의견 감정소','북쪽 감정소의 감정사 보라를 만나요.',GUIDE.gem];
+  if(gCount()<6) return ['퀘스트 3 · 명품 의견 감정소','의견 보석 6개를 기준으로 감정해요 ('+gCount()+'/6)',null];
+  return ['퀘스트 3 · 명품 의견 감정소','감정사 보라에게 명품 의견을 알려 줘요.',GUIDE.gem];
+}
+function markerOf(o){
+  if(o.kind==='chief') return (!G.intro||(allDone()&&!G.finished))?'!':'';
+  if(o.kind==='guide'){ var q=o.q; if(q==='r') return !G.rStart?'!':(!G.rDone&&rCount()>=12?'?':''); if(q==='c') return !G.cStart?'!':(!G.cDone&&cCount()>=3?'?':''); if(q==='g') return !G.gStart?'!':(!G.gDone&&gCount()>=6?'?':''); }
+  if(o.kind==='rule') return G.rOK[o.idx]?'ok':(G.rStart?'!':'');
+  if(o.kind==='tent'){ var s=G.scen[SCENARIOS[o.idx].id]; return s&&s.done?'ok':(G.cStart?'!':''); }
+  if(o.kind==='gem') return G.gems[o.idx]?'ok':(G.gStart?'!':'');
+  if(o.kind==='flag') return G.finished?'ok':'';
+  return '';
+}
+
+/* ---------- 0. 캠프 대장 ---------- */
+var CHIEF='#2E5E4A';
+function talkChief(o){
+  if(!G.intro){
+    lines([
+      {who:'캠프 대장',color:'#B9D9C6',text:'어서 와요, '+G.name+' 캠퍼! 토의 캠프에 온 걸 환영해요.'},
+      {who:'캠프 대장',color:'#B9D9C6',text:'지난 시간 「왁자지껄 토의」 기억나요? 모두 한꺼번에 말해서 누가 무슨 말을 하는지 알기 어려웠죠.'},
+      {who:'캠프 대장',color:'#B9D9C6',text:'오늘의 목표는 “다양한 의견을 조정하며 토의할 수 있다.”예요. 의견이 달라도 다투지 않고, 비교하고 조정하는 방법을 익혀요.'},
+      {who:'캠프 대장',color:'#B9D9C6',text:'캠프에는 세 곳의 훈련장이 있어요.\n서쪽 ‘규칙의 숲’, 동쪽 ‘조정 캠프파이어’, 북쪽 ‘명품 의견 감정소’.\n머리 위에 ! 가 뜬 사람에게 말을 걸어요.',last:'출발할게요!'}
+    ],function(){ G.intro=true; addXP(10,'캠프 입장'); closeDlg(); });
+    return;
+  }
+  if(allDone()&&!G.finished){ ceremony(); return; }
+  var ns=nextStep();
+  dlg({who:'캠프 대장',color:'#B9D9C6',text:G.finished?'토의 마스터 '+G.name+'! 다음 시간에는 오늘 배운 방법으로 월드 카페 토의를 해요.':'지금 할 일: '+ns[1]+'\n막히면 오른쪽 위 퀘스트 일지에서 ‘바로 가기’를 눌러도 돼요.',next:{label:'닫기',fn:closeDlg}});
+}
+function talkFlag(){ if(allDone()&&!G.finished){ ceremony(); return; } dlg({who:'수료식 깃대',color:'#FFE7B8',text:G.finished?'토의 마스터 수료를 축하해요!':'세 가지 퀘스트를 모두 마치면 이곳에서 수료식이 열려요. ('+[G.rDone,G.cDone,G.gDone].filter(Boolean).length+'/3)',next:{label:'닫기',fn:closeDlg}}); }
+
+/* ---------- 1. 규칙의 숲 ---------- */
+function talkForest(o){
+  var col='#CDEBC0';
+  if(!G.rStart){ lines([
+    {who:'숲지기 나래',color:col,text:'여기는 규칙의 숲! 이 숲에 사는 친구 12명은 토의할 때의 말버릇이 저마다 달라요.'},
+    {who:'숲지기 나래',color:col,text:'친구의 말과 행동을 잘 보고, 좋은 토의 태도인지 고쳐야 할 태도인지 판정해 줘요. 머리 위에 ! 가 뜬 친구에게 가면 돼요.',last:'판정하러 갈게요'}
+  ],function(){ G.rStart=true; save(); closeDlg(); }); return; }
+  if(rCount()<12){ dlg({who:'숲지기 나래',color:col,text:'지금까지 '+rCount()+'명을 판정했어요. 아직 '+(12-rCount())+'명 남았어요!',next:{label:'계속할게요',fn:closeDlg}}); return; }
+  if(!G.rDone){ var html='<h3 style="font-family:var(--f-display);font-weight:400;margin:10px 0 6px;color:#183A2C">📜 토의 규칙 두루마리</h3><ol class="rules">'+RULES.map(function(r){ return '<li><b>'+esc(r.t)+'</b> — '+esc(r.d)+'</li>'; }).join('')+'</ol>';
+    dlg({who:'숲지기 나래',color:col,text:'와! 12명 모두 판정했어요. 처음부터 맞힌 친구 '+(12-Object.keys(G.rWrong).length)+'명! 우리가 지킬 토의 규칙을 두루마리에 담아 줄게요.',html:html,next:{label:'배지 받기',fn:function(){ G.rDone=true; addXP(50,'규칙 지킴이 배지'); beep('lv'); banner('배지 획득!','토의 규칙 지킴이'); closeDlg(); }}}); return; }
+  dlg({who:'숲지기 나래',color:col,text:'규칙 두루마리는 가방에 있어요. 동쪽 캠프파이어에서 의견 조정을 연습해 봐요!',next:{label:'닫기',fn:closeDlg}});
+}
+function talkRule(o){
+  var s=SCENES[o.idx];
+  if(G.rOK[o.idx]){ dlg({who:s.who,color:o.color,text:'아까 판정해 줘서 고마워! “'+s.rule+'” 꼭 기억할게.',next:{label:'닫기',fn:closeDlg}}); return; }
+  dlg({who:s.who,color:o.color,sub:'규칙의 숲 친구',act:'('+s.act+')',text:s.say,html:'<p class="note" style="margin:8px 0 0">이 친구의 토의 태도는 어떤가요?</p>',
+    choices:[{t:'👍 좋은 토의 태도예요'},{t:'✋ 고쳐야 할 태도예요'}],
+    onChoice:function(i){
+      var right=(i===0)===s.good;
+      var html='<div class="fb '+(right?'ok':'no')+'"><b>'+(right?'정답이에요!':'다시 생각해 봐요')+'</b><br><span class="chip">'+esc(s.rule)+'</span><br>'+esc(s.ex)+'</div>';
+      if(right){ beep('ok'); G.rOK[o.idx]=true; o.jump=1; addXP(G.rWrong[o.idx]?5:10,'판정'); }
+      else { beep('no'); G.rWrong[o.idx]=true; save(); }
+      dlg({who:s.who,color:o.color,act:'('+s.act+')',text:s.say,html:html,
+        next:{label:right?(rCount()>=12?'나래에게 보고하러 가기':'다음 친구 찾기'):'다시 판정하기',fn:right?closeDlg:function(){ talkRule(o); }},
+        extra:right?[]:[{label:'나중에',cls:'btn-soft',fn:closeDlg}]});
+    }});
+}
+
+/* ---------- 2. 조정 캠프파이어 ---------- */
+function talkCamp(o){
+  var col='#FFD8B8';
+  if(!G.cStart){ lines([
+    {who:'불꽃지기 한결',color:col,text:'조정 캠프파이어에 온 걸 환영해요! 텐트 세 곳에서 모둠 토의가 막혀 있어요.'},
+    {who:'불꽃지기 한결',color:col,text:'여러분이 모둠원이 되어 알맞은 말을 골라 주세요. 좋은 말을 고르면 ‘모둠 화합’과 ‘문제 해결’ 게이지가 올라가고, 의견 조정 스킬을 배워요.',last:'텐트로 갈게요'}
+  ],function(){ G.cStart=true; save(); closeDlg(); }); return; }
+  if(cCount()<3){ dlg({who:'불꽃지기 한결',color:col,text:'해결한 텐트 '+cCount()+'/3. 배운 스킬은 가방에서 볼 수 있어요.',next:{label:'계속할게요',fn:closeDlg}}); return; }
+  if(!G.cDone){ var got=METHOD_ORDER.filter(function(k){ return G.methods[k]; });
+    dlg({who:'불꽃지기 한결',color:col,text:'세 모둠의 토의를 모두 조정했어요! 의견이 부딪칠 때 쓸 수 있는 스킬 '+got.length+'개를 익혔어요.',html:'<div style="margin-top:8px">'+got.map(function(k){ return '<span class="chip">'+esc(METHODS[k].name)+'</span>'; }).join('')+'</div>',
+      next:{label:'배지 받기',fn:function(){ G.cDone=true; addXP(50,'의견 조정 달인 배지'); beep('lv'); banner('배지 획득!','의견 조정 달인'); closeDlg(); }}}); return; }
+  dlg({who:'불꽃지기 한결',color:col,text:'멋진 조정 솜씨였어요! 북쪽 감정소에서 명품 의견을 찾아봐요.',next:{label:'닫기',fn:closeDlg}});
+}
+var SC=null;
+function talkTent(o){
+  var sc=SCENARIOS[o.idx], prev=G.scen[sc.id];
+  dlg({who:'사회자',sub:sc.title,color:o.color,text:sc.situ,html:prev&&prev.done?'<p class="note">지난 기록: '+'★★★'.slice(0,prev.stars)+'☆☆☆'.slice(0,3-prev.stars)+'</p>':'',
+    next:{label:prev&&prev.done?'다시 도전하기':'토의 시작!',fn:function(){ SC={o:o,sc:sc,turn:0,h:50,s:50,wrong:0,removed:{}}; runTurn(); }},extra:[{label:'나중에',cls:'btn-soft',fn:closeDlg}]});
+}
+function gaugeHTML(){ return '<div class="gauges"><div class="gauge h">모둠 화합 '+SC.h+'<div class="bar"><i style="width:'+SC.h+'%"></i></div></div><div class="gauge s">문제 해결 '+SC.s+'<div class="bar"><i style="width:'+SC.s+'%"></i></div></div></div>'; }
+var TALKCOL={};
+function colOf(name){ if(!TALKCOL[name]){ var n=0; for(var i=0;i<name.length;i++) n+=name.charCodeAt(i); TALKCOL[name]=PAL[n%PAL.length]; } return TALKCOL[name]; }
+function runTurn(){
+  var t=SC.sc.turns[SC.turn];
+  var ls=t.lines.map(function(l){ return {who:l[0],color:colOf(l[0]),sub:SC.sc.title+' · '+(SC.turn+1)+'/'+SC.sc.turns.length,text:l[1],html:gaugeHTML(),last:'내 차례!'}; });
+  lines(ls,function(){ askTurn(shuffle(t.opts)); });
+}
+function askTurn(opts){
+  var t=SC.sc.turns[SC.turn];
+  var avail=opts.filter(function(op){ return !SC.removed[op.t]; });
+  var ctx=t.lines.map(function(l){ return l[0]+': '+l[1]; }).join('\n');
+  dlg({who:G.name+' (나)',color:G.color,sub:'어떻게 말할까요?',text:ctx,html:gaugeHTML(),choices:avail.map(function(op){ return {t:op.t}; }),
+    onChoice:function(i){
+      var op=avail[i], good=op.k==='good';
+      SC.h=clamp(SC.h+op.h,0,100); SC.s=clamp(SC.s+op.s,0,100);
+      var html='<div class="fb '+(good?'ok':'no')+'"><b>'+(good?'좋은 조정이에요!':'앗, 모둠이 흔들려요')+'</b><br>'+esc(op.fb)+(good&&op.m?'<br><span class="chip">스킬: '+esc(METHODS[op.m].name)+'</span>':'')+'</div>'+gaugeHTML();
+      if(good){ beep('ok'); var isNew=op.m&&!G.methods[op.m]; if(op.m) G.methods[op.m]=true; addXP(15,isNew?'새 스킬!':'좋은 조정'); if(isNew) setTimeout(function(){ banner('스킬 획득!',METHODS[op.m].name); },400); SC.o.jump=1; }
+      else { beep('no'); SC.wrong++; SC.removed[op.t]=true; }
+      dlg({who:G.name+' (나)',color:G.color,text:'“'+op.t+'”',html:html,next:good?{label:SC.turn+1<SC.sc.turns.length?'다음 장면 ▶':'토의 마무리 ▶',fn:function(){ SC.turn++; if(SC.turn<SC.sc.turns.length) runTurn(); else endScenario(); }}:{label:'다시 골라 볼게요',fn:function(){ askTurn(opts); }}});
+    }});
+}
+function endScenario(){
+  var stars=SC.wrong===0?3:(SC.wrong<=2?2:1), id=SC.sc.id, prev=G.scen[id], first=!(prev&&prev.done);
+  G.scen[id]={done:true,stars:Math.max(stars,prev&&prev.stars||0)};
+  if(first) addXP(20,'토의 완료'); else save();
+  var tip=METHODS[SC.sc.turns[SC.sc.turns.length-1].opts.filter(function(o){ return o.k==='good'; })[0].m];
+  dlg({who:'사회자',sub:SC.sc.title,color:SC.o.color,text:'우리 모둠이 합의했어요! '+(stars===3?'한 번도 흔들리지 않았어요.':stars===2?'조금 흔들렸지만 잘 조정했어요.':'다음엔 친구 마음을 먼저 생각해 봐요.'),
+    html:'<p style="font-family:var(--f-display);font-size:34px;margin:6px 0;color:#C9761A">'+'★★★'.slice(0,stars)+'<span style="color:#d8cfb8">'+'☆☆☆'.slice(0,3-stars)+'</span></p>'+gaugeHTML()+'<p class="note" style="margin-top:8px">마지막에 쓴 방법: <b>'+esc(tip.name)+'</b> — '+esc(tip.tip)+'</p>',
+    next:{label:'좋아요',fn:function(){ SC=null; closeDlg(); }},extra:stars<3?[{label:'다시 도전',cls:'btn-soft',fn:function(){ talkTent(SC.o); }}]:[]});
+}
+
+/* ---------- 3. 명품 의견 감정소 ---------- */
+var GEMCOL=['#FF6F91','#4FC3F7','#FFD45E','#7FD69A','#B38BE6','#FF9C5A'];
+var TOPIC='우리 반 친구들이 더 사이좋게 지내려면 어떻게 해야 할까?';
+function talkGem(o){
+  var col='#E3D4F7';
+  if(!G.gStart){ lines([
+    {who:'감정사 보라',color:col,text:'명품 의견 감정소에 어서 와요. 오늘의 토의 주제는 “'+TOPIC+'”예요.'},
+    {who:'감정사 보라',color:col,text:'받침대 위 보석 6개에는 친구들의 의견이 담겨 있어요. 기준표로 하나하나 감정해 주세요.',html:'<div style="margin-top:8px">'+CRITS.map(function(c){ return '<span class="chip">'+esc(c.q)+'</span>'; }).join('')+'</div>'},
+    {who:'감정사 보라',color:col,text:'○는 알맞아요, △는 조금 부족해요, ×는 알맞지 않아요. 누구 의견인지가 아니라 기준으로 공정하게 봐야 해요!',last:'감정하러 갈게요'}
+  ],function(){ G.gStart=true; save(); closeDlg(); }); return; }
+  if(gCount()<6){ dlg({who:'감정사 보라',color:col,text:'감정한 보석 '+gCount()+'/6. 반짝이는 ! 보석으로 가요.',next:{label:'계속할게요',fn:closeDlg}}); return; }
+  if(!G.gDone){ dlg({who:'감정사 보라',color:col,text:'모든 보석을 감정했어요! 이제 기준을 가장 잘 만족하는 “명품 의견”을 골라 주세요.',next:{label:'명품 의견 고르기',fn:function(){ closeDlg(); openPick(); }},extra:[{label:'나중에',cls:'btn-soft',fn:closeDlg}]}); return; }
+  dlg({who:'감정사 보라',color:col,text:'명품 의견 감별 실력이 대단해요! 이제 캠프 본부로 가서 대장님을 만나요.',next:{label:'닫기',fn:closeDlg}});
+}
+var MSVG={o:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.8"/></svg>',t:'<svg viewBox="0 0 24 24"><path d="M12 4.5 20.5 19h-17z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg>',x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>'};
+var AP=null;
+function openAppraise(i){
+  var o=OPINIONS[i], done=G.gems[i]; AP={i:i,marks:done?Object.assign({},done.marks):{},checked:!!done};
+  drawAppraise();
+}
+function drawAppraise(){
+  var o=OPINIONS[AP.i], all=CRITS.every(function(c){ return AP.marks[c.id]; }), match=0;
+  var rows=CRITS.map(function(c){
+    var m=AP.marks[c.id], ok=AP.checked&&m===o.model[c.id]; if(ok) match++;
+    var res=AP.checked?'<div class="res '+(ok?'ok':'no')+'">'+(ok?'✓ 감정사와 같아요. ':'감정사 판정: '+MARKS[o.model[c.id]].sym+' '+MARKS[o.model[c.id]].word+'. ')+esc(o.ex[c.id])+'</div>':'';
+    return '<div class="crit"><div class="q"><b>'+esc(c.q)+'</b><small>'+esc(c.s)+'</small>'+res+'</div><div class="marks" role="group" aria-label="'+esc(c.q)+'">'+CYCLE.map(function(k){ var v=MARKS[k].v; return '<button class="mark m'+v+'" data-c="'+c.id+'" data-k="'+k+'" aria-pressed="'+(m===k)+'" aria-label="'+MARKS[k].word+'"'+(AP.checked?' disabled':'')+'>'+MSVG[k]+'</button>'; }).join('')+'</div></div>';
+  }).join('');
+  var gem='<svg class="gem" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2 36 16 20 38 4 16z" fill="'+GEMCOL[AP.i]+'" stroke="#183A2C" stroke-width="2"/><path d="M4 16h32M20 2l-6 14 6 22 6-22z" fill="none" stroke="#183A2C" stroke-width="1.2" opacity=".6"/></svg>';
+  var foot=AP.checked?'<div class="fb ok" style="margin-top:12px"><b>감정 결과 '+match+'/4 일치</b><br>'+(match===4?'완벽한 감정이에요!':'다른 부분은 감정사의 까닭을 읽어 봐요.')+'</div><div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn btn-go" id="apClose">감정 완료</button></div>'
+    :'<div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn btn-soft" id="apLater">나중에</button><button class="btn btn-hot" id="apGo"'+(all?'':' disabled')+'>감정하기</button></div>';
+  openSheet('<div class="sheet-h"><h2>의견 보석 감정</h2><button class="x" id="sx" aria-label="닫기">✕</button></div>'+
+    '<p class="note" style="margin:0 0 12px">토의 주제: '+esc(TOPIC)+'</p><div class="opcard">'+gem+'<div class="note">'+esc(o.who)+'의 의견</div><p class="op">'+esc(o.op)+'</p><p class="why">근거: '+esc(o.why)+'</p></div><div style="margin-top:10px">'+rows+'</div>'+foot);
+  [].forEach.call(document.querySelectorAll('.mark'),function(b){ b.onclick=function(){ AP.marks[b.getAttribute('data-c')]=b.getAttribute('data-k'); beep('tap'); drawAppraise(); }; });
+  var go=$('apGo'); if(go) go.onclick=function(){ AP.checked=true; var m=0; CRITS.forEach(function(c){ if(AP.marks[c.id]===o.model[c.id]) m++; }); var first=!G.gems[AP.i]; G.gems[AP.i]={marks:AP.marks,match:m}; if(first) addXP(5*m+5,'감정 '+m+'/4'); else save(); beep(m>=3?'ok':'tap'); drawAppraise(); };
+  var cl=$('apClose'); if(cl) cl.onclick=closeSheet; var lt=$('apLater'); if(lt) lt.onclick=closeSheet;
+}
+function openPick(msg){
+  openSheet('<div class="sheet-h"><h2>명품 의견 고르기</h2><button class="x" id="sx" aria-label="닫기">✕</button></div><p>기준표 감정 결과를 보고, 모두가 동의할 만한 <b>명품 의견</b>을 골라요.</p>'+(msg||'')+
+    '<div class="gems" style="margin-top:10px">'+OPINIONS.map(function(o,i){ var g=G.gems[i]; var tot=CRITS.reduce(function(s,c){ return s+(g?MARKS[g.marks[c.id]].v:0); },0);
+      return '<button class="gemopt" data-i="'+i+'"><b style="color:'+GEMCOL[i]+';text-shadow:0 0 1px #183A2C">◆</b> <b>'+esc(o.who)+'</b><br>'+esc(o.op)+'<br><span class="note">내 감정 점수 '+tot+'/8 · '+CRITS.map(function(c){ return g?MARKS[g.marks[c.id]].sym:'-'; }).join(' ')+'</span></button>'; }).join('')+'</div>');
+  [].forEach.call(document.querySelectorAll('.gemopt'),function(b){ b.onclick=function(){ choosePick(+b.getAttribute('data-i')); }; });
+}
+function choosePick(i){
+  var o=OPINIONS[i];
+  if(o.id===BEST_ID){ closeSheet(); beep('lv'); G.gDone=true; addXP(50,'명품 의견 감별사 배지');
+    dlg({who:'감정사 보라',color:'#E3D4F7',text:'정답! 서연이의 “'+o.op+'”는 네 가지 기준을 모두 만족하는 명품 의견이에요.',html:'<p class="note">하은이 의견도 훌륭하지만, 꾸준히 실천하는 데 시간이 더 필요해요. 이렇게 장점과 단점을 함께 따지는 것이 의견 조정이에요.</p>',next:{label:'배지 받기',fn:function(){ banner('배지 획득!','명품 의견 감별사'); closeDlg(); }}}); return; }
+  beep('no');
+  var weak=CRITS.filter(function(c){ return o.model[c.id]!=='o'; }).map(function(c){ return c.q+' '+MARKS[o.model[c.id]].sym+' — '+o.ex[c.id]; });
+  var msg='<div class="fb no"><b>'+(o.id==='D'?'아깝다!':'다시 생각해 봐요')+'</b><br>'+esc(o.who)+'의 의견은 이런 점이 아쉬워요.<ul style="margin:6px 0 0;padding-left:20px">'+weak.map(function(w){ return '<li>'+esc(w)+'</li>'; }).join('')+'</ul></div>';
+  openPick(msg);
+}
+
+/* ---------- 수료식 ---------- */
+function ceremony(){
+  lines([
+    {who:'캠프 대장',color:'#B9D9C6',text:G.name+' 캠퍼, 세 가지 훈련을 모두 마쳤군요!'},
+    {who:'캠프 대장',color:'#B9D9C6',text:'토의 규칙을 지키고, 의견이 부딪칠 때 조정하고, 기준으로 공정하게 의견을 검토할 수 있게 되었어요.',last:'수료증 받기'}
+  ],function(){ closeDlg(); G.finished=true; addXP(100,'수료'); beep('lv'); openCert(); confetti(); });
+}
+function badgeSVG(on,txt,col){ return '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="'+(on?col:'#E8E1CF')+'"/><circle cx="50" cy="50" r="40" fill="none" stroke="'+(on?'#FFFBF0':'#CFC6AE')+'" stroke-width="2.5" stroke-dasharray="5 4"/><text x="50" y="58" text-anchor="middle" font-family="Jua, sans-serif" font-size="'+(on?20:28)+'" fill="'+(on?'#FFFBF0':'#A99F86')+'">'+esc(on?txt:'?')+'</text></svg>'; }
+function badgesHTML(){ return '<div class="grid3">'+[[G.rDone,'규칙','토의 규칙 지킴이','#4CB06A'],[G.cDone,'조정','의견 조정 달인','#E8792E'],[G.gDone,'명품','명품 의견 감별사','#9A6BD8']].map(function(b){ return '<div class="badge">'+badgeSVG(b[0],b[1],b[3])+'<b>'+esc(b[2])+'</b></div>'; }).join('')+'</div>'; }
+function openCert(){
+  var l=level();
+  openSheet('<div class="cert"><p class="note">5학년 국어 · 4. 의견을 조정해요</p><h2>토의 캠프 수료증</h2><div class="name">'+esc(G.name)+'</div><p>위 캠퍼는 토의 규칙을 지키고, 다양한 의견을 비교하고 조정하며,<br>기준에 따라 공정하게 의견을 검토하는 훈련을 마쳤기에 이 수료증을 줍니다.</p><p style="font-family:var(--f-display);font-size:22px;color:#183A2C">Lv.'+(l+1)+' '+esc(LEVELS[l][1])+' · '+G.xp+' XP</p>'+badgesHTML()+'<p class="note" style="margin-top:12px">다음 시간 예고: 오늘 익힌 방법으로 <b>월드 카페 토의</b>를 해요.</p></div><div class="row" style="justify-content:center;margin-top:14px"><button class="btn btn-go" id="sx">캠프로 돌아가기</button></div>');
+}
+function confetti(){
+  if(REDUCED) return; var c=$('confetti'); c.hidden=false; var ctx=c.getContext('2d'); c.width=innerWidth; c.height=innerHeight;
+  var ps=[]; for(var i=0;i<140;i++) ps.push({x:Math.random()*c.width,y:-20-Math.random()*c.height*.5,vx:(Math.random()-.5)*2,vy:2+Math.random()*3,r:Math.random()*6.28,c:PAL[i%PAL.length]});
+  var t0=Date.now(); (function f(){ ctx.clearRect(0,0,c.width,c.height); ps.forEach(function(p){ p.x+=p.vx; p.y+=p.vy; p.r+=.1; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r); ctx.fillStyle=p.c; ctx.fillRect(-5,-3,10,6); ctx.restore(); }); if(Date.now()-t0<3500) requestAnimationFrame(f); else c.hidden=true; })();
+}
+
+/* ---------- 시트(퀘스트 일지 · 가방 · 게시판 · 선생님 · 설정) ---------- */
+var sheetOnClose=null;
+function openSheet(html,onClose){ $('sheetBox').innerHTML=html; $('sheet').hidden=false; sheetOnClose=onClose||null; var x=$('sx'); if(x) x.onclick=closeSheet; setTimeout(function(){ var f=$('sheetBox').querySelector('button,input'); if(f) try{ f.focus({preventScroll:true}); }catch(e){} },30); }
+function closeSheet(){ $('sheet').hidden=true; $('sheetBox').innerHTML=''; if(sheetOnClose) sheetOnClose(); sheetOnClose=null; refreshAll(); }
+$('sheet').addEventListener('click',function(e){ if(e.target.id==='sheet') closeSheet(); });
+$('bQuest').onclick=openQuests; $('bBag').onclick=openBag; $('bTeach').onclick=openTeacher; $('bSet').onclick=openSettings;
+function warpTo(o){ var a=Math.atan2(P.x-o.x,P.z-o.z); if(o.kind==='rule'||o.kind==='tent') a=o.yaw; P.x=o.x+Math.sin(a)*1.8; P.z=o.z+Math.cos(a)*1.8; P.yaw=Math.atan2(o.x-P.x,o.z-P.z); CAM.yaw=P.yaw+Math.PI; closeSheet(); interact(o); }
+function nextEntity(q){
+  if(q==='r'){ if(!G.rStart||rCount()>=12) return GUIDE.forest; return ENT.filter(function(o){ return o.kind==='rule'&&!G.rOK[o.idx]; })[0]; }
+  if(q==='c'){ if(!G.cStart||cCount()>=3) return GUIDE.camp; return ENT.filter(function(o){ return o.kind==='tent'&&!(G.scen[SCENARIOS[o.idx].id]&&G.scen[SCENARIOS[o.idx].id].done); })[0]; }
+  if(q==='g'){ if(!G.gStart||gCount()>=6) return GUIDE.gem; return ENT.filter(function(o){ return o.kind==='gem'&&!G.gems[o.idx]; })[0]; }
+  return GUIDE.chief;
+}
+function openQuests(){
+  var qs=[
+    {k:'0',ic:'본부',t:'캠프 입장',d:'캠프 대장에게 오늘의 목표 듣기',p:G.intro?1:0,n:1,done:G.intro,q:'chief'},
+    {k:'r',ic:'숲',t:'퀘스트 1 · 토의 규칙 지킴이',d:'규칙의 숲 친구 12명의 태도 판정하기 (도입)',p:rCount(),n:12,done:G.rDone,q:'r'},
+    {k:'c',ic:'불',t:'퀘스트 2 · 의견 조정 캠프',d:'텐트 3곳의 모둠 토의를 조정하기 (활동 1)',p:cCount(),n:3,done:G.cDone,q:'c'},
+    {k:'g',ic:'◆',t:'퀘스트 3 · 명품 의견 찾기',d:'의견 보석 6개를 기준표로 감정하고 명품 의견 고르기 (활동 2)',p:gCount(),n:6,done:G.gDone,q:'g'},
+    {k:'f',ic:'★',t:'수료식',d:'캠프 대장에게 토의 마스터 수료증 받기 (정리)',p:G.finished?1:0,n:1,done:G.finished,q:'chief'}
+  ];
+  openSheet('<div class="sheet-h"><h2>퀘스트 일지</h2><button class="x" id="sx" aria-label="닫기">✕</button></div>'+
+    qs.map(function(q,i){ return '<div class="quest'+(q.done?' done':'')+'"><div class="qi">'+(q.done?'✓':esc(q.ic))+'</div><div style="min-width:0"><b>'+esc(q.t)+'</b><p>'+esc(q.d)+'</p><div class="prog" aria-label="'+q.p+'/'+q.n+'"><i style="width:'+Math.round(q.p/q.n*100)+'%"></i></div></div><button class="btn btn-soft" data-q="'+q.q+'" data-i="'+i+'">바로 가기</button></div>'; }).join('')+
+    '<p class="note">‘바로 가기’를 누르면 다음에 할 곳으로 순간 이동해요. 수업 시간이 부족할 때 써요.</p>');
+  [].forEach.call(document.querySelectorAll('[data-q]'),function(b){ b.onclick=function(){ var q=b.getAttribute('data-q'); var e=q==='chief'?GUIDE.chief:nextEntity(q); warpTo(e); }; });
+}
+function openBag(){
+  openSheet('<div class="sheet-h"><h2>'+esc(G.name)+'의 가방</h2><button class="x" id="sx" aria-label="닫기">✕</button></div><h3>배지</h3>'+badgesHTML()+
+    '<h3>의견 조정 스킬 ('+METHOD_ORDER.filter(function(k){ return G.methods[k]; }).length+'/6)</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));grid-gap:8px">'+METHOD_ORDER.map(function(k){ var on=G.methods[k]; return '<div class="skill'+(on?' on':'')+'"><b>'+(on?'✦ ':'🔒 ')+esc(METHODS[k].name)+'</b><p>'+(on?esc(METHODS[k].tip):'조정 캠프파이어에서 배울 수 있어요.')+'</p></div>'; }).join('')+'</div>'+
+    '<h3>📜 토의 규칙 두루마리</h3>'+(G.rDone?'<ol class="rules">'+RULES.map(function(r){ return '<li><b>'+esc(r.t)+'</b> — '+esc(r.d)+'</li>'; }).join('')+'</ol>':'<p class="note">규칙의 숲 퀘스트를 마치면 얻을 수 있어요.</p>'));
+}
+function openBoard(){ openSheet('<div class="sheet-h"><h2>토의 규칙 게시판</h2><button class="x" id="sx" aria-label="닫기">✕</button></div><p class="note">학습 목표: 다양한 의견을 조정하며 토의할 수 있다.</p><ol class="rules">'+RULES.map(function(r){ return '<li><b>'+esc(r.t)+'</b> — '+esc(r.d)+'</li>'; }).join('')+'</ol>'); }
+function openSettings(){
+  openSheet('<div class="sheet-h"><h2>설정</h2><button class="x" id="sx" aria-label="닫기">✕</button></div>'+
+    '<div class="row"><button class="btn btn-soft" id="stSound">소리: '+(G.sound?'켜짐':'꺼짐')+'</button><button class="btn btn-soft" id="stLite">그래픽: '+(G.lite?'가볍게(느린 태블릿용)':'보통')+'</button></div>'+
+    '<h3>처음부터 다시</h3><p class="note">이 기기에 저장된 내 캠퍼 기록을 지워요.</p><div id="rstBox"><button class="btn btn-soft" id="stReset">기록 지우기…</button></div>');
+  $('stSound').onclick=function(){ G.sound=!G.sound; save(); openSettings(); };
+  $('stLite').onclick=function(){ G.lite=!G.lite; save(); resize(); openSettings(); };
+  $('stReset').onclick=function(){ $('rstBox').innerHTML='<div class="fb no"><b>정말 지울까요?</b> 레벨, 배지, 스킬이 모두 사라져요.<div class="row" style="margin-top:8px"><button class="btn btn-go" id="stYes">네, 지워요</button><button class="btn btn-soft" id="stNo">취소</button></div></div>'; $('stYes').onclick=function(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} location.reload(); }; $('stNo').onclick=openSettings; };
+}
+
+/* ---------- 선생님 도구 ---------- */
+var T={idx:0,remain:SEGS[0].min*60000,running:false,endAt:0,iv:null,warned:false}, TT='timer', ORDER=['1번','2번','3번','4번'], PICKN=null, PICKED={};
+function fmt(ms){ var s=Math.max(0,Math.ceil(ms/1000)); return Math.floor(s/60)+':'+('0'+s%60).slice(-2); }
+function tick(){ if(!T.running) return; T.remain=T.endAt-Date.now(); if(T.remain<=60000&&!T.warned){ T.warned=true; beep('tap'); } if(T.remain<=0){ T.remain=0; T.running=false; clearInterval(T.iv); beep('bell'); } var c=$('clock'); if(c){ c.textContent=fmt(T.remain); c.className='clock'+(T.remain===0?' zero':(T.remain<=60000?' warn':'')); } var chip=$('tChip'); if(chip) chip.textContent='⏱ '+SEGS[T.idx].name+' '+fmt(T.remain); }
+function openTeacher(){
+  var tabs=[['timer','차시 타이머'],['num','번호 뽑기'],['order','발언 순서'],['flow','수업 흐름']];
+  var body='';
+  if(TT==='timer') body='<div class="segs">'+SEGS.map(function(s,i){ return '<button data-seg="'+i+'" aria-current="'+(i===T.idx)+'">'+esc(s.name)+' '+s.min+'분</button>'; }).join('')+'</div><div class="clock" id="clock" role="timer">'+fmt(T.remain)+'</div><p style="text-align:center">'+esc(SEGS[T.idx].hint)+'</p><div class="row" style="justify-content:center"><button class="btn btn-hot" id="tGo">'+(T.running?'일시정지':'시작')+'</button><button class="btn btn-soft" id="tReset">다시</button><button class="btn btn-soft" id="tNext">다음 단계</button></div>';
+  if(TT==='num') body='<div class="bignum" id="bigN" aria-live="polite">'+(PICKN||'?')+'</div><div class="row" style="justify-content:center"><button class="btn btn-hot" id="nGo">번호 뽑기 (1~22)</button><button class="btn btn-soft" id="nClr">뽑은 번호 초기화</button></div><p class="note" style="text-align:center">이미 뽑힌 번호: '+(Object.keys(PICKED).join(', ')||'없음')+'</p>';
+  if(TT==='order') body='<label for="oNames"><b>모둠원 이름</b> (쉼표로 구분)</label><input class="field" id="oNames" value="'+esc(ORDER.join(', '))+'"><div class="row" style="margin-top:8px"><button class="btn btn-hot" id="oGo">순서 섞기</button></div><ol class="orderlist" id="oList">'+ORDER.map(function(n){ return '<li>'+esc(n)+'</li>'; }).join('')+'</ol>';
+  if(TT==='flow') body='<ol class="rules">'+SEGS.map(function(s){ return '<li><b>'+esc(s.name)+' ('+s.min+'분)</b> — '+esc(s.hint)+'</li>'; }).join('')+'</ol><p class="note" style="margin-top:10px">게임 연결: 도입 → 퀘스트 1(규칙의 숲) · 활동 1 → 퀘스트 2(조정 캠프파이어) · 활동 2 → 퀘스트 3(명품 의견 감정소) · 정리 → 수료식</p>';
+  openSheet('<div class="sheet-h"><h2>선생님 도구</h2><button class="x" id="sx" aria-label="닫기">✕</button></div><div class="tabs" role="tablist">'+tabs.map(function(t){ return '<button role="tab" data-tt="'+t[0]+'" aria-selected="'+(TT===t[0])+'">'+t[1]+'</button>'; }).join('')+'</div>'+body);
+  [].forEach.call(document.querySelectorAll('[data-tt]'),function(b){ b.onclick=function(){ TT=b.getAttribute('data-tt'); openTeacher(); }; });
+  [].forEach.call(document.querySelectorAll('[data-seg]'),function(b){ b.onclick=function(){ T.idx=+b.getAttribute('data-seg'); T.running=false; clearInterval(T.iv); T.remain=SEGS[T.idx].min*60000; T.warned=false; openTeacher(); }; });
+  if($('tGo')) $('tGo').onclick=function(){ if(T.running){ T.running=false; clearInterval(T.iv); } else { if(T.remain<=0) T.remain=SEGS[T.idx].min*60000; T.running=true; T.endAt=Date.now()+T.remain; clearInterval(T.iv); T.iv=setInterval(tick,250); beep('tap'); } openTeacher(); hud(); };
+  if($('tReset')) $('tReset').onclick=function(){ T.running=false; clearInterval(T.iv); T.remain=SEGS[T.idx].min*60000; T.warned=false; openTeacher(); hud(); };
+  if($('tNext')) $('tNext').onclick=function(){ T.idx=(T.idx+1)%SEGS.length; T.running=false; clearInterval(T.iv); T.remain=SEGS[T.idx].min*60000; T.warned=false; openTeacher(); hud(); };
+  if($('nGo')) $('nGo').onclick=function(){ var pool=[]; for(var i=1;i<=22;i++) if(!PICKED[i]) pool.push(i); if(!pool.length){ PICKED={}; for(i=1;i<=22;i++) pool.push(i); } var n=0, fin=pool[Math.floor(Math.random()*pool.length)], el=$('bigN'), iv=setInterval(function(){ el.textContent=pool[Math.floor(Math.random()*pool.length)]; if(++n>(REDUCED?0:14)){ clearInterval(iv); PICKN=fin; PICKED[fin]=1; beep('ok'); openTeacher(); } },70); };
+  if($('nClr')) $('nClr').onclick=function(){ PICKED={}; PICKN=null; openTeacher(); };
+  if($('oGo')) $('oGo').onclick=function(){ ORDER=shuffle($('oNames').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean)); beep('ok'); openTeacher(); };
+}
+
+/* ---------- HUD ---------- */
+function hud(){
+  var l=level(), cur=LEVELS[l][0], nx=LEVELS[l+1]?LEVELS[l+1][0]:cur+100, pct=Math.round((G.xp-cur)/(nx-cur)*100);
+  $('hName').textContent=G.name; $('hLv').textContent='Lv.'+(l+1); $('hTitle').textContent=LEVELS[l][1]+' · '+G.xp+' XP';
+  $('hXp').style.width=clamp(pct,0,100)+'%'; $('hXpBar').setAttribute('aria-valuenow',clamp(pct,0,100));
+  var a=$('hAva'); a.style.background=G.color; a.textContent=G.name.charAt(0)||'나';
+  var ns=nextStep(); $('hTrackTxt').innerHTML='<b>'+esc(ns[0])+'</b>'+esc(ns[1])+(T.running||T.remain<SEGS[T.idx].min*60000?'<br><span id="tChip" style="font-weight:700;color:#C9761A">⏱ '+esc(SEGS[T.idx].name)+' '+fmt(T.remain)+'</span>':'');
+}
+/* ---------- 이름표 ---------- */
+var TAGS=[];
+function makeTags(){
+  var box=$('tags'); box.innerHTML=''; TAGS=[];
+  ENT.forEach(function(o){ var d=document.createElement('div'); d.className='tag'; d.innerHTML='<span class="mk"></span><span class="nm">'+esc(o.name)+'</span>'; box.appendChild(d); TAGS.push({el:d,mk:d.firstChild,o:o,h:o.kind==='gem'?2.6:(o.kind==='board'?2.9:(o.kind==='flag'?6.6:2.75)),max:o.kind==='flag'?40:20}); });
+  Object.keys(ZONES).forEach(function(k){ var z=ZONES[k], d=document.createElement('div'); d.className='tag zone'; d.innerHTML='<span class="nm">'+esc(z.name)+'</span>'; box.appendChild(d); TAGS.push({el:d,o:{x:z.x,z:z.z},h:k==='hq'?7.5:(k==='camp'?4.2:5),max:70,zone:true}); });
+}
+function refreshAll(){ TAGS.forEach(function(t){ if(t.zone) return; var m=markerOf(t.o); t.mk.className='mk'+(m==='?'?' q':(m==='ok'?' ok':'')); t.mk.textContent=m==='ok'?'✓':m; }); hud(); var q=$('qDot'); if(q) q.hidden=!(nextStep()[2]); save(); }
+
+/* ---------- 미니맵 ---------- */
+var mini=$('mini'), mctx=mini.getContext('2d');
+function drawMini(){
+  var w=mini.width, s=w/2/44; mctx.clearRect(0,0,w,w);
+  mctx.save(); mctx.beginPath(); mctx.arc(w/2,w/2,w/2,0,6.283); mctx.clip();
+  mctx.fillStyle='#4E8A4F'; mctx.fillRect(0,0,w,w);
+  mctx.save(); mctx.translate(w/2,w/2); mctx.rotate(CAM.yaw); mctx.translate(-P.x*s*1.3,-P.z*s*1.3); var k=s*1.3;
+  mctx.strokeStyle='#E2C98F'; mctx.lineWidth=3*k; mctx.lineCap='round'; mctx.beginPath(); mctx.moveTo(0,18*k); mctx.lineTo(0,-14*k); mctx.moveTo(-14*k,1*k); mctx.lineTo(14*k,1*k); mctx.stroke();
+  [['hq','#E2C98F'],['forest','#2F7348'],['camp','#E8792E'],['gem','#9A6BD8']].forEach(function(z){ var Z=ZONES[z[0]]; mctx.fillStyle=z[1]; mctx.globalAlpha=.75; mctx.beginPath(); mctx.arc(Z.x*k,Z.z*k,6.5*k,0,6.283); mctx.fill(); mctx.globalAlpha=1; });
+  mctx.fillStyle='#5EB4D6'; mctx.beginPath(); mctx.arc(17*k,-19*k,5*k,0,6.283); mctx.fill();
+  ENT.forEach(function(o){ var m=markerOf(o); if(!m||m==='ok') return; mctx.fillStyle=m==='?'?'#7DC0E0':'#FFD45E'; mctx.beginPath(); mctx.arc(o.x*k,o.z*k,Math.max(3,1*k),0,6.283); mctx.fill(); mctx.strokeStyle='#183A2C'; mctx.lineWidth=1.5; mctx.stroke(); });
+  mctx.restore();
+  mctx.translate(w/2,w/2); mctx.rotate(CAM.yaw-P.yaw+Math.PI); mctx.fillStyle='#FFFBF0'; mctx.strokeStyle='#183A2C'; mctx.lineWidth=2; mctx.beginPath(); mctx.moveTo(0,-11); mctx.lineTo(8,8); mctx.lineTo(0,4); mctx.lineTo(-8,8); mctx.closePath(); mctx.fill(); mctx.stroke();
+  mctx.restore();
+}
+
+/* ---------- 메인 루프 ---------- */
+var last=0, frame=0, DPR=1;
+function resize(){ VW=innerWidth; VHh=innerHeight; DPR=Math.min(window.devicePixelRatio||1, G.lite?1:1.6); if(GLOK){ canvas.width=Math.round(VW*DPR); canvas.height=Math.round(VHh*DPR); } }
+window.addEventListener('resize',resize);
+function update(dt){
+  var mx=0, mz=0, busy=BUSY();
+  if(!busy){
+    var ix=JOY.x, iy=JOY.y;
+    if(KEYS['arrowleft']||KEYS['a']) ix-=1; if(KEYS['arrowright']||KEYS['d']) ix+=1; if(KEYS['arrowup']||KEYS['w']) iy-=1; if(KEYS['arrowdown']||KEYS['s']) iy+=1;
+    var fx=-Math.sin(CAM.yaw), fz=-Math.cos(CAM.yaw), rx=-fz, rz=fx;
+    if(ix||iy){ TARGET=null; mx=fx*(-iy)+rx*ix; mz=fz*(-iy)+rz*ix; }
+    else if(TARGET){ var dx=TARGET.x-P.x, dz=TARGET.z-P.z, d=Math.sqrt(dx*dx+dz*dz), stop=TARGET.ent?TARGET.ent.r*.7:.25;
+      if(d<stop){ var e=TARGET.ent; TARGET=null; if(e) interact(e); } else { mx=dx/d; mz=dz/d; TARGET.t=(TARGET.t||0)+dt; if(TARGET.t>8) TARGET=null; } }
+  }
+  var l=Math.sqrt(mx*mx+mz*mz); if(l>1){ mx/=l; mz/=l; l=1; }
+  var sp=6.2; P.moving=l>.08;
+  if(P.moving){ P.x+=mx*sp*dt; P.z+=mz*sp*dt; P.yaw=angLerp(P.yaw,Math.atan2(mx,mz),Math.min(1,dt*12)); P.walk+=dt*10*l; }
+  OBST.forEach(function(o){ var dx=P.x-o.x, dz=P.z-o.z, d=Math.sqrt(dx*dx+dz*dz), r=o.r+.4; if(d<r&&d>0.0001){ P.x=o.x+dx/d*r; P.z=o.z+dz/d*r; } });
+  var pd=Math.sqrt(P.x*P.x+P.z*P.z); if(pd>41){ P.x*=41/pd; P.z*=41/pd; }
+  // 가까운 상호작용 대상
+  var best=null, bd=1e9; ENT.forEach(function(o){ var dx=o.x-P.x, dz=o.z-P.z, d=dx*dx+dz*dz; if(d<o.r*o.r&&d<bd){ bd=d; best=o; } });
+  if(best!==NEAR){ NEAR=best; var b=$('act'); if(NEAR){ b.disabled=false; b.innerHTML=(NEAR.kind==='gem'?'감정하기':(NEAR.kind==='board'?'읽기':(NEAR.kind==='flag'?'살펴보기':'말 걸기')))+'<small>'+esc(NEAR.name)+'</small>'; } else { b.disabled=true; b.innerHTML='가까이 가요<small>! 표시를 찾아요</small>'; } }
+  // NPC
+  NPCS.forEach(function(o){ o.bob+=dt; if(o.jump>0) o.jump=Math.max(0,o.jump-dt*1.6); var dx=P.x-o.x, dz=P.z-o.z, near=dx*dx+dz*dz<36; o.yaw=angLerp(o.yaw,near||o.talking?Math.atan2(dx,dz):o.base,Math.min(1,dt*4)); if(o.talking){ P.yaw=angLerp(P.yaw,Math.atan2(o.x-P.x,o.z-P.z),Math.min(1,dt*6)); } });
+  // 카메라
+  var wantD=busy&&!$('dlg').hidden?Math.min(CAM.dist,7.5):CAM.dist; CAM.curDist=lerp(CAM.curDist,wantD,Math.min(1,dt*4));
+  CAM.cx=lerp(CAM.cx,P.x,Math.min(1,dt*8)); CAM.cz=lerp(CAM.cz,P.z,Math.min(1,dt*8));
+  if(frame%30===0 && P.moving) save();
+}
+function render(t){
+  var asp=VW/VHh, D=CAM.curDist, cp=Math.cos(CAM.pitch), spp=Math.sin(CAM.pitch);
+  EYE=[CAM.cx+Math.sin(CAM.yaw)*cp*D, spp*D+1.2, CAM.cz+Math.cos(CAM.yaw)*cp*D]; LOOK=[CAM.cx,1.3,CAM.cz];
+  FOV=asp<1?1.15:0.95;
+  VP=E3.mul(E3.persp(FOV,asp,.3,160),E3.lookAt(EYE,LOOK,[0,1,0]));
+  if(!GLOK) return;
+  R.frame(VP);
+  R.draw(STATIC,null);
+  // 텐트·NPC
+  NPCS.forEach(function(o){ var y=Math.abs(Math.sin(o.bob*2))*0.04+Math.sin(o.jump*Math.PI)*0.7; var em=null; if(o===NEAR){ var k=.08+.06*Math.sin(t*.006); em=[k,k*.8,k*.3]; } R.draw(o.mesh,E3.trs(o.x,y,o.z,0,o.yaw,0),em); });
+  // 플레이어
+  var sw=P.moving?Math.sin(P.walk)*.6:0, by=P.moving?Math.abs(Math.cos(P.walk))*.08:0;
+  var base=E3.trs(P.x,by,P.z,0,P.yaw,0);
+  if(PM.body){ R.draw(PM.leg,E3.mul(base,E3.trs(-.13,.75,0,sw,0,0))); R.draw(PM.leg,E3.mul(base,E3.trs(.13,.75,0,-sw,0,0))); R.draw(PM.body,base); }
+  // 보석
+  ENT.forEach(function(o){ if(o.kind!=='gem') return; var done=!!G.gems[o.idx], k=done ? 0.25 :.12+.08*Math.sin(t*.004+o.idx); R.draw(GEMM[o.idx],E3.trs(o.x,1.65+Math.sin(t*.002+o.idx)*.12,o.z,0,t*.0012+o.idx,0),[o.gemCol[0]*k+(done?.15:0),o.gemCol[1]*k+(done?.12:0),o.gemCol[2]*k]); });
+  // 불꽃
+  var f1=1+Math.sin(t*.017)*.12+Math.sin(t*.031)*.08, f2=1+Math.sin(t*.023+1)*.15;
+  R.draw(FL1,E3.trs(21,.2,0,0,t*.002,0,1,f1,1),[.55,.3,.05]); R.draw(FL2,E3.trs(21,.25,0,0,-t*.003,0,.8,f2,.8),[.5,.45,.15]);
+  // 깃발 펄럭
+  // 구름
+  for(var i=0;i<7;i++){ var a=i/7*6.283+t*.00002, rr=30+i*3; R.draw(CLOUD,E3.trs(Math.sin(a)*rr,20+i%3*2,Math.cos(a)*rr,0,a,0,1+i%2*.5,.6,1.2)); }
+  // 목표 링
+  if(TARGET&&!TARGET.ent) R.draw(RING,E3.trs(TARGET.x,.06,TARGET.z,0,0,0,.6+.1*Math.sin(t*.01)),[.4,.35,.1],.85,true);
+  // 그림자
+  if(PM.body) R.draw(SHADOW,E3.trs(P.x,.05,P.z),null,.25,true);
+  NPCS.forEach(function(o){ R.draw(SHADOW,E3.trs(o.x,.05,o.z),null,.22,true); });
+}
+function placeTags(){
+  for(var i=0;i<TAGS.length;i++){ var tg=TAGS[i], o=tg.o, dx=o.x-P.x, dz=o.z-P.z, d=Math.sqrt(dx*dx+dz*dz);
+    var y=tg.h+(o.jump?Math.sin(o.jump*Math.PI)*.7:0); var p=(d<tg.max)?project(o.x,y,o.z):null;
+    if(!p||(tg.zone&&d<9)){ if(tg.vis!==false){ tg.el.style.display='none'; tg.vis=false; } continue; }
+    if(tg.vis!==true){ tg.el.style.display=''; tg.vis=true; }
+    var sc=clamp(14/p[2],.55,1.15); tg.el.style.transform='translate('+p[0].toFixed(1)+'px,'+p[1].toFixed(1)+'px) translate(-50%,-100%) scale('+sc.toFixed(2)+')';
+  }
+}
+function loop(now){
+  var dt=Math.min(.05,(now-last)/1000||0); last=now; frame++;
+  requestAnimationFrame(loop);
+  try{ update(dt); render(now); if(GLOK) placeTags(); if(frame%4===0) drawMini(); }catch(e){ if(!loop.err){ loop.err=1; if(window.console) console.error(e); } }
+}
+
+/* ---------- 시작 ---------- */
+function initGL(){
+  STATIC=R.mesh(buildWorld());
+  SHADOW=R.mesh(E3.disc(.6,14,[0,0,0],0));
+  RING=R.mesh((function(){ var g=new E3.Geo(); for(var i=0;i<20;i++){ var a0=i/20*6.283,a1=(i+1)/20*6.283; g.quad([Math.sin(a0)*.7,0,Math.cos(a0)*.7],[Math.sin(a0),0,Math.cos(a0)],[Math.sin(a1),0,Math.cos(a1)],[Math.sin(a1)*.7,0,Math.cos(a1)*.7],[1,.85,.3]); } return g; })());
+  var f=new E3.Geo(); f.put(E3.cyl(0,.75,1.6,6,C.fire1),0,0,0); f.put(E3.cyl(0,.45,1.2,5,C.fire1),.35,0,.2); FL1=R.mesh(f);
+  var f2=new E3.Geo(); f2.put(E3.cyl(0,.4,1.1,5,C.fire2),0,0,0); f2.put(E3.cyl(0,.3,.8,5,C.fire2),-.3,0,-.1); FL2=R.mesh(f2);
+  var cl=new E3.Geo(); cl.put(E3.ico(2,0,C.cloud),0,0,0); cl.put(E3.ico(1.5,0,C.cloud),2,-.3,.3); cl.put(E3.ico(1.4,0,C.cloud),-2,-.4,-.2); CLOUD=R.mesh(cl);
+  ENT.forEach(function(o){ if(o.kind!=='gem') return; var g=new E3.Geo(), c=o.gemCol, t=.55, b=.75; var T=[0,b+t,0],B=[0,0,0],m=[[.45,b*.55,0],[0,b*.55,.45],[-.45,b*.55,0],[0,b*.55,-.45]];
+    for(var i=0;i<4;i++){ var a=m[i], n=m[(i+1)%4]; g.tri(n,a,T,E3.shade(c,1.15)); g.tri(a,n,B,E3.shade(c,.8)); } GEMM[o.idx]=R.mesh(g); });
+}
+function start(){
+  $('title').hidden=true; $('hudTL').hidden=false; $('hudTR').hidden=false;
+  if(GLOK){ $('joy').hidden=false; $('act').hidden=false; $('camBtns').hidden=false; buildPlayer(); } else { $('nogl').hidden=false; }
+  P.x=G.pos[0]; P.z=G.pos[1]; CAM.cx=P.x; CAM.cz=P.z; CAM.yaw=Math.PI; P.yaw=0;
+  makeTags(); refreshAll(); resize();
+  if(!G.intro) setTimeout(function(){ if(!BUSY()) interact(GUIDE.chief); },700);
+}
+(function title(){
+  var saved=load(), pick=COLORS[2];
+  if(saved){ $('bCont').hidden=false; $('bCont').textContent='이어서 하기 ('+saved.name+' · '+saved.xp+' XP)'; $('pName').value=saved.name; pick=saved.color; }
+  function drawColors(){ $('pColors').innerHTML=COLORS.map(function(c){ return '<button style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===pick)+'" aria-label="옷 색 '+c+'"></button>'; }).join(''); [].forEach.call($('pColors').children,function(b){ b.onclick=function(){ pick=b.getAttribute('data-c'); drawColors(); }; }); }
+  drawColors();
+  $('bStart').onclick=function(){ var n=$('pName').value.trim(); if(!n){ $('pName').focus(); $('pName').placeholder='이름을 먼저 적어 주세요!'; return; } G=fresh(); if(saved){ G.sound=saved.sound; G.lite=saved.lite; } G.name=n; G.color=pick; beep('ok'); save(); start(); };
+  $('bCont').onclick=function(){ G=saved; G.color=pick; var n=$('pName').value.trim(); if(n) G.name=n; beep('ok'); start(); };
+  $('pName').addEventListener('keydown',function(e){ if(e.key==='Enter') $('bStart').click(); });
+})();
+setupEntities();
+if(GLOK){ resize(); initGL(); }
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
