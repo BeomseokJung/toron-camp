@@ -8,7 +8,7 @@
  *    (처음 한 번 권한 승인 창이 뜹니다.) 나온 웹 앱 URL 을 학생들에게 안내하면 끝!
  * 학생은 구글 로그인 없이 접속할 수 있고, 모든 기록은 이 시트의 탭에 쌓입니다.
  */
-var TEACHER_PIN = '1234';
+var TEACHER_PIN = '1234'; // 실제 서버의 비밀번호는 Apps Script 편집기에서만 바꿔요
 
 var SHEETS = {
   settings:  ['id', '저장 시각', 'JSON'],
@@ -20,10 +20,9 @@ var SHEETS = {
 var MARK = { 2: '○', 1: '△', 0: '×' };
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('명품 의견 검토판')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  var api = ScriptApp.getService().getUrl();
+  var link = 'https://toron-camp.vercel.app/review/?api=' + encodeURIComponent(api);
+  return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width,initial-scale=1"><div style="font-family:sans-serif;padding:24px;line-height:1.6"><h2>토의 캠프 데이터 서버</h2><p>이 주소는 명품 의견 검토판이 쓰는 저장 서버예요.</p><p><a href="' + link + '" target="_top">명품 의견 검토판 열기</a></p></div>').setTitle('토의 캠프 데이터 서버');
 }
 
 /* GitHub Pages 등 다른 주소에 올린 화면이 부르는 JSON API (POST, text/plain) */
